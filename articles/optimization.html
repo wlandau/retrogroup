@@ -90,6 +90,21 @@ function is shared. The methods differ only in the kind of change they
 propose: a flip for unconstrained sampling and a swap for constrained
 sampling.</p>
 <div class="section level2">
+<h2 id="disclaimer">Disclaimer<a class="anchor" aria-label="anchor" href="#disclaimer"></a>
+</h2>
+<p>The sampled datasets from
+<code><a href="../articles/sampling.html">vignette("sampling", package = "retrogroup")</a></code> carry no
+prognostic information because the model in
+<code><a href="../articles/model.html">vignette("model", package = "retrogroup")</a></code> has no prognostic
+effect. If the loss function includes the standard errors of the log
+hazard ratios, then optimization does introduce prognostic information,
+but only indirectly, through the association between standard errors and
+event counts. This indirect prognostic information is not guaranteed to
+reflect the disease’s natural history, and the statistician running the
+analyses should investigate it before using optimized datasets for
+covariate adjustment.</p>
+</div>
+<div class="section level2">
 <h2 id="loss-function">Loss function<a class="anchor" aria-label="anchor" href="#loss-function"></a>
 </h2>
 <p>The loss function measures the distance between the published

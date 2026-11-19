@@ -24,6 +24,20 @@ only if it reduces a loss function. The loss function is shared. The
 methods differ only in the kind of change they propose: a flip for
 unconstrained sampling and a swap for constrained sampling.
 
+## Disclaimer
+
+The sampled datasets from
+[`vignette("sampling", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/sampling.md)
+carry no prognostic information because the model in
+[`vignette("model", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/model.md)
+has no prognostic effect. If the loss function includes the standard
+errors of the log hazard ratios, then optimization does introduce
+prognostic information, but only indirectly, through the association
+between standard errors and event counts. This indirect prognostic
+information is not guaranteed to reflect the disease’s natural history,
+and the statistician running the analyses should investigate it before
+using optimized datasets for covariate adjustment.
+
 ## Loss function
 
 The loss function measures the distance between the published subgroup

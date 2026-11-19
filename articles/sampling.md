@@ -20,6 +20,14 @@ random variation and may not exactly match the published statistics.
 defines methods to refine an individual dataset so the observed and
 published subgroup log hazard ratios match.
 
+## Disclaimer
+
+The model in
+[`vignette("model", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/model.md)
+has no prognostic effect, so the sampled subgroup levels are not (on
+average) associated with the disease’s natural history. The datasets
+from sampling should not be used for covariate adjustment.
+
 ## Unconstrained sampling
 
 If we treat subgroup levels as unconstrained, each \\x_i\\ has its own

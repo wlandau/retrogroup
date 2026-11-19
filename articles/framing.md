@@ -158,8 +158,8 @@ subgroup counts used and how they were chosen.
 The standard errors \\\sigma_k\\ of the log hazard ratios may or may not
 be reported in the publication. If they are not reported, they can often
 be obtained from published confidence intervals after transforming the
-bounds to the log scale. If available, they aid the optimization of
-subgroup assignments in
+bounds to the log scale, or the number of events in the subgroup. If
+available, they aid the optimization of subgroup assignments in
 [`vignette("optimization", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/optimization.md).
 However, they are not strictly required.
 

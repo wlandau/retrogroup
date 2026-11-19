@@ -18,6 +18,19 @@ proportional hazards model, then write out the likelihood, derive the
 posterior probability of subgroup membership, and finally show how to
 estimate it.
 
+## Disclaimer
+
+The model has no prognostic effect, which means the datasets from
+sampling
+([`vignette("sampling", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/sampling.md))
+are not (on average) associated with the disease’s natural history and
+should not be used for covariate adjustment. If supplied with the
+standard errors of the log hazard ratios, on the other hand, the
+optimization methods in
+[`vignette("optimization", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/optimization.md)
+do carry indirect prognostic information because those standard errors
+are associated with event counts.
+
 ## Hazard rate
 
 Along with the notation in
