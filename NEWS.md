@@ -1,4 +1,4 @@
-# retrogroup development version
+# retrogroup 0.0.2
 
 * Prepare for open-source release: adopt the MIT license and move the source code and documentation website to <https://github.com/wlandau/retrogroup> and <https://wlandau.github.io/retrogroup>.
 
