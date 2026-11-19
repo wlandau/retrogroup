@@ -25,6 +25,11 @@ Our goal is to construct the posterior probability of a patient belonging to a p
 `vignette("sampling", package = "retrogroup")` uses estimates of these posterior probabilities to sample subgroup assignments for each patient.
 We begin by defining the hazard rate for a proportional hazards model, then write out the likelihood, derive the posterior probability of subgroup membership, and finally show how to estimate it.
 
+## Disclaimer
+
+The model has no prognostic effect, which means the datasets from sampling (`vignette("sampling", package = "retrogroup")`) are not (on average) associated with the disease's natural history and should not be used for covariate adjustment. 
+If supplied with the standard errors of the log hazard ratios, on the other hand, the optimization methods in `vignette("optimization", package = "retrogroup")` do carry indirect prognostic information because those standard errors are associated with event counts.
+
 ## Hazard rate
 
 Along with the notation in `vignette("framing", package = "retrogroup")`, define:

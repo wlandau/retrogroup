@@ -26,6 +26,11 @@ Over a large number of simulations, subgroup log hazard ratios computed on the s
 However, each individual simulated dataset is subject to random variation and may not exactly match the published statistics.
 `vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and published subgroup log hazard ratios match.
 
+## Disclaimer
+
+The model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the sampled subgroup levels are not (on average) associated with the disease's natural history.
+The datasets from sampling should not be used for covariate adjustment.
+
 ## Unconstrained sampling
 
 If we treat subgroup levels as unconstrained, each $x_i$ has its own independent categorical distribution with probabilities $p_{i1}, \ldots, p_{iK}$.

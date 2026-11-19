@@ -134,6 +134,8 @@ Each sampled dataset is one random draw, so its subgroup hazard ratios differ so
 Across many draws, however, they match the published log hazard ratios on average.
 The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
 
+The model has no prognostic effect, so sampled subgroup levels are not (on average) associated with the disease's natural history, and sampled datasets should not be used for covariate adjustment.
+
 ### Optimization
 
 Optimization refines a single sampled dataset so that its subgroup hazard ratios match the published ones.
@@ -179,6 +181,9 @@ summary
 #> 5 sex      female          312           -0.147          0.162
 #> 6 sex      male            307           -0.656          0.179
 ```
+
+If the published standard errors are supplied, optimization introduces prognostic information, but only indirectly, through the association between standard errors and event counts.
+The statistician running the analyses should investigate this indirect prognostic information before using optimized datasets for covariate adjustment.
 
 See [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html) for the method and the [optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html) for its performance.
 
