@@ -13,13 +13,13 @@ Source:
 [`DESCRIPTION`](https://github.com/wlandau/retrogroup/DESCRIPTION)
 
 Landau WM (2026). *retrogroup: Reconstruct Patient-Level Subgroup
-Membership in Survival Data*. R package version 0.0.1.9000,
+Membership in Survival Data*. R package version 0.0.2,
 <https://wlandau.github.io/retrogroup/>.
 
     @Manual{,
       title = {retrogroup: Reconstruct Patient-Level Subgroup Membership in Survival Data},
       author = {William Michael Landau},
       year = {2026},
-      note = {R package version 0.0.1.9000},
+      note = {R package version 0.0.2},
       url = {https://wlandau.github.io/retrogroup/},
     }
