@@ -22,7 +22,7 @@ pak::pak("wlandau/retrogroup")
 
 ## Documentation
 
-The [documentation website](https://wlandau.github.io/retrogroup) provides a [function reference](https://wlandau.github.io/retrogroup/reference/index.html), usage tutorial, and [vignettes](https://wlandau.github.io/retrogroup/articles/index.html).
+The [documentation website](https://wlandau.github.io/retrogroup/) provides a [function reference](https://wlandau.github.io/retrogroup/reference/index.html), usage tutorial, and [vignettes](https://wlandau.github.io/retrogroup/articles/index.html).
 The vignettes explain the method and check its performance:
 
 - Methods

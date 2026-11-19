@@ -38,7 +38,7 @@ tolerance <- 1e-3     # Stop when the loss falls below this value. Full scale: 1
 
 </details>
 
-Rendered on 2026-11-19 with `retrogroup` 0.0.1.9000 at commit [1456151](https://github.com/wlandau/retrogroup/commit/1456151d70a9aa1ee0059dfb1d118a5df58ab16c).
+Rendered on 2026-11-19 with `retrogroup` 0.0.2 at commit [0a22d0a](https://github.com/wlandau/retrogroup/commit/0a22d0a7335a403d6340d3eb3eb4e3bf2aead697).
 
 ## Purpose
 
@@ -470,10 +470,10 @@ The table and figure summarize the optimization runs: the elapsed time of each r
 
 |Method        |Standard errors | Runs| Median seconds| 95th percentile seconds| Max seconds| Fraction warned|
 |:-------------|:---------------|----:|--------------:|-----------------------:|-----------:|---------------:|
-|Unconstrained |Available       | 1000|          0.013|                   0.073|       1.790|           0.013|
-|Unconstrained |Unavailable     | 1000|          0.012|                   0.047|       1.859|           0.007|
-|Constrained   |Available       | 1000|          0.010|                   0.030|       0.094|           0.000|
-|Constrained   |Unavailable     | 1000|          0.010|                   0.027|       0.060|           0.000|
+|Unconstrained |Available       | 1000|          0.014|                   0.079|       1.828|           0.013|
+|Unconstrained |Unavailable     | 1000|          0.012|                   0.051|       1.780|           0.007|
+|Constrained   |Available       | 1000|          0.011|                   0.032|       0.100|           0.000|
+|Constrained   |Unavailable     | 1000|          0.010|                   0.028|       0.065|           0.000|
 
 
 
