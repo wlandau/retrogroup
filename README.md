@@ -1,0 +1,185 @@
+
+# retrogroup <img src="man/figures/logo.png" align="right" height="139" alt="" />
+
+Patient-level survival outcomes for a whole clinical trial are frequently available alongside published subgroup hazard ratios, while the subgroup membership of each patient is not.
+`retrogroup` reconstructs subgroup membership from these two sources of information.
+A Bayesian survival model estimates the posterior probability that each patient belongs to each subgroup level, and a sampling method uses these probabilities to impute a subgroup level for each patient.
+
+## Installation
+
+To install the latest release version of `retrogroup`, open R and run:
+
+``` r
+install.packages("pak")
+pak::pak("wlandau/retrogroup@*release")
+```
+
+To install the development version of `retrogroup`:
+
+``` r
+pak::pak("wlandau/retrogroup")
+```
+
+## Documentation
+
+The [documentation website](https://wlandau.github.io/retrogroup) provides a [function reference](https://wlandau.github.io/retrogroup/reference/index.html), usage tutorial, and [vignettes](https://wlandau.github.io/retrogroup/articles/index.html).
+The vignettes explain the method and check its performance:
+
+- Methods
+  - [The motivating problem](https://wlandau.github.io/retrogroup/articles/framing.html)
+  - [The model and posterior](https://wlandau.github.io/retrogroup/articles/model.html)
+  - [Sampling subgroups](https://wlandau.github.io/retrogroup/articles/sampling.html)
+  - [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html)
+- Benchmarks
+  - [Sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html)
+  - [Optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html)
+
+## Usage
+
+A typical workflow has four steps: gather the patient-level data and the published subgroup statistics, convert them to the standard format of `retrogroup`, sample subgroup membership for each patient, and optionally optimize the sampled subgroups to match the published statistics.
+
+### Example data
+
+The example below uses the `colon` dataset from the `survival` package, which comes from the adjuvant colon cancer trial of levamisole plus fluorouracil (Moertel et al., 1990).
+`group_example_patient()` returns the patient-level survival data, with no subgroup information:
+
+``` r
+library(retrogroup)
+group_example_patient()
+#> # A tibble: 619 × 3
+#>    arm      time event
+#>    <chr>   <dbl> <int>
+#>  1 Lev+5FU  1521     1
+#>  2 Lev+5FU  3087     0
+#>  3 Obs       963     1
+#>  4 Lev+5FU   293     1
+#>  5 Obs       659     1
+#>  6 Lev+5FU  1767     1
+#>  7 Obs      3192     0
+#>  8 Lev+5FU  3308     0
+#>  9 Lev+5FU  3309     0
+#> 10 Obs      2085     1
+#> # ℹ 609 more rows
+```
+
+`group_example_summary()` returns subgroup statistics like the ones a publication would report.
+For each level of age, nodal status, and sex, it gives the number of patients and the log hazard ratio (with standard error) of treatment versus control.
+
+``` r
+group_example_summary()
+#> # A tibble: 6 × 5
+#>   variable level      patients log_hazard_ratio standard_error
+#>   <chr>    <chr>         <int>            <dbl>          <dbl>
+#> 1 age      under 60        280           -0.169          0.178
+#> 2 age      60 or over      339           -0.546          0.160
+#> 3 node4    no              453           -0.417          0.153
+#> 4 node4    yes             166           -0.312          0.190
+#> 5 sex      female          312           -0.147          0.162
+#> 6 sex      male            307           -0.656          0.179
+```
+
+### Pre-processing
+
+`group_data_patient()` and `group_data_summary()` check the input data for consistency and convert it to the standard format the rest of the package expects.
+You supply the column names of your own data and state which study arm is the treatment arm.
+
+``` r
+patient <- group_data_patient(
+  group_example_patient(),
+  arm = "arm",
+  treatment = "Lev+5FU",
+  time = "time",
+  event = "event"
+)
+
+summary <- group_data_summary(
+  group_example_summary(),
+  variable = "variable",
+  level = "level",
+  patients = "patients",
+  log_hazard_ratio = "log_hazard_ratio",
+  standard_error = "standard_error"
+)
+```
+
+### Sampling
+
+`group_sample_unconstrained()` estimates[^1] the posterior probability that each patient belongs to each subgroup level, then samples a subgroup level independently for each patient.
+`group_sample_constrained()` is similar, but it ensures that the number of patients in each subgroup level exactly matches the respective count in `summary$patients`.
+
+``` r
+set.seed(0)
+sample <- group_sample_constrained(patient, summary)
+```
+
+``` r
+sample
+#> # A tibble: 619 × 6
+#>    treatment  time event age        node4 sex   
+#>        <int> <dbl> <int> <fct>      <fct> <fct> 
+#>  1         1  1521     1 60 or over no    male  
+#>  2         1  3087     0 under 60   yes   female
+#>  3         0   963     1 under 60   no    male  
+#>  4         1   293     1 60 or over no    male  
+#>  5         0   659     1 60 or over no    male  
+#>  6         1  1767     1 under 60   no    male  
+#>  7         0  3192     0 60 or over yes   female
+#>  8         1  3308     0 60 or over no    female
+#>  9         1  3309     0 60 or over no    male  
+#> 10         0  2085     1 60 or over no    female
+#> # ℹ 609 more rows
+```
+
+Each sampled dataset is one random draw, so its subgroup hazard ratios differ somewhat from the published ones.
+Across many draws, however, they match the published log hazard ratios on average.
+The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
+
+### Optimization
+
+Optimization refines a single sampled dataset so that its subgroup hazard ratios match the published ones.
+`group_optimize_unconstrained()` starts from the output of `group_sample_unconstrained()` and moves one patient at a time to the subgroup level that best reduces the discrepancy.
+`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients, so the number of patients in each subgroup level never changes.
+
+``` r
+set.seed(0)
+optimized <- group_optimize_constrained(
+  sample,
+  summary,
+  iterations = 10000L,
+  tolerance = 4e-5
+)
+```
+
+`group_analysis_summary()` computes the subgroup statistics of a patient-level dataset.
+
+``` r
+group_analysis_summary(optimized)
+#> # A tibble: 6 × 5
+#>   variable level      patients log_hazard_ratio standard_error
+#>   <chr>    <chr>         <int>            <dbl>          <dbl>
+#> 1 age      under 60        280           -0.168          0.174
+#> 2 age      60 or over      339           -0.545          0.163
+#> 3 node4    no              453           -0.416          0.150
+#> 4 node4    yes             166           -0.314          0.195
+#> 5 sex      female          312           -0.149          0.158
+#> 6 sex      male            307           -0.656          0.183
+```
+
+The optimized dataset matches the published counts, log hazard ratios, and standard errors in `summary`.
+
+``` r
+summary
+#> # A tibble: 6 × 5
+#>   variable level      patients log_hazard_ratio standard_error
+#>   <chr>    <chr>         <int>            <dbl>          <dbl>
+#> 1 age      under 60        280           -0.169          0.178
+#> 2 age      60 or over      339           -0.546          0.160
+#> 3 node4    no              453           -0.417          0.153
+#> 4 node4    yes             166           -0.312          0.190
+#> 5 sex      female          312           -0.147          0.162
+#> 6 sex      male            307           -0.656          0.179
+```
+
+See [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html) for the method and the [optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html) for its performance.
+
+[^1]: via `group_analysis_probability()`

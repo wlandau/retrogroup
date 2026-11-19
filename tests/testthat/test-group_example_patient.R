@@ -1,0 +1,20 @@
+test_that("group_example_patient() has the expected structure", {
+  x <- group_example_patient()
+  expect_s3_class(x, "tbl_df")
+  expect_false(anyNA(x))
+  expect_equal(nrow(x), 619L)
+  expect_equal(colnames(x), c("arm", "time", "event"))
+  expect_type(x$arm, "character")
+  expect_type(x$time, "double")
+  expect_type(x$event, "integer")
+  expect_true(all(x$event %in% c(0L, 1L)))
+})
+
+test_that("group_example_patient() has the expected contents", {
+  x <- group_example_patient()
+  expect_true(all(x$time > 0))
+  expect_equal(sum(x$event), 291L)
+  expect_no_error(survival::Surv(x$time, x$event))
+  expect_equal(sum(x$arm == "Obs"), 315L)
+  expect_equal(sum(x$arm == "Lev+5FU"), 304L)
+})

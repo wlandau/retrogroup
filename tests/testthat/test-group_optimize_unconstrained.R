@@ -1,0 +1,267 @@
+test_that("group_optimize_unconstrained() has the expected structure", {
+  data <- probability_example()
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, data$summary)
+  sample$extra <- seq_len(nrow(sample))
+  x <- suppressWarnings(group_optimize_unconstrained(
+    sample,
+    data$summary,
+    iterations = 20L
+  ))
+  expect_s3_class(x, "tbl_df")
+  expect_identical(colnames(x), colnames(sample))
+  expect_equal(nrow(x), nrow(sample))
+  other <- c(colnames(data$patient), "extra")
+  expect_identical(x[, other], sample[, other])
+  for (variable in unique(data$summary$variable)) {
+    levels <- data$summary$level[data$summary$variable == variable]
+    expect_s3_class(x[[variable]], "factor")
+    expect_identical(levels(x[[variable]]), levels)
+    expect_false(anyNA(x[[variable]]))
+    expect_true(all(x[[variable]] %in% levels))
+  }
+})
+
+test_that("group_optimize_unconstrained() reduces the loss", {
+  data <- probability_example()
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, data$summary)
+  x <- suppressWarnings(group_optimize_unconstrained(
+    sample,
+    data$summary,
+    iterations = 50L
+  ))
+  for (variable in unique(data$summary$variable)) {
+    before <- optimize_loss_reference(sample, data$summary, variable)
+    after <- optimize_loss_reference(x, data$summary, variable)
+    expect_lt(after, before)
+  }
+})
+
+test_that("group_optimize_unconstrained() reduces the loss without SEs", {
+  data <- probability_example()
+  summary <- data$summary
+  summary$standard_error <- NA_real_
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, summary)
+  x <- suppressWarnings(group_optimize_unconstrained(
+    sample,
+    summary,
+    iterations = 50L
+  ))
+  for (variable in unique(summary$variable)) {
+    before <- optimize_loss_reference(sample, summary, variable)
+    after <- optimize_loss_reference(x, summary, variable)
+    expect_lt(after, before)
+  }
+})
+
+test_that("group_optimize_unconstrained() stops early", {
+  data <- probability_example()
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, data$summary)
+  expect_identical(
+    suppressWarnings(
+      group_optimize_unconstrained(sample, data$summary, iterations = 0L)
+    ),
+    sample
+  )
+  expect_identical(
+    group_optimize_unconstrained(sample, data$summary, tolerance = Inf),
+    sample
+  )
+})
+
+test_that("group_optimize_unconstrained() is reproducible with set.seed()", {
+  data <- probability_example()
+  summary <- data$summary[data$summary$variable == "age", ]
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, summary)
+  set.seed(1)
+  x <- suppressWarnings(group_optimize_unconstrained(
+    sample,
+    summary,
+    iterations = 20L
+  ))
+  set.seed(1)
+  y <- suppressWarnings(group_optimize_unconstrained(
+    sample,
+    summary,
+    iterations = 20L
+  ))
+  expect_identical(x, y)
+})
+
+test_that("group_optimize_unconstrained() handles factor levels in patient", {
+  data <- probability_example()
+  summary <- data$summary[data$summary$variable == "age", ]
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, summary)
+  factor <- sample
+  factor$age <- factor(factor$age)
+  set.seed(1)
+  x <- suppressWarnings(group_optimize_unconstrained(
+    sample,
+    summary,
+    iterations = 5L
+  ))
+  set.seed(1)
+  y <- suppressWarnings(group_optimize_unconstrained(
+    factor,
+    summary,
+    iterations = 5L
+  ))
+  expect_identical(x, y)
+})
+
+test_that("optimize_loss_term() uses the SE only if available", {
+  fit <- c(0.5, 0.2)
+  expect_equal(retrogroup:::optimize_loss_term(fit, 0.1, NA_real_), 0.16)
+  expect_equal(retrogroup:::optimize_loss_term(fit, 0.1, 0.3), 0.17)
+  expect_identical(
+    retrogroup:::optimize_loss_term(c(NA_real_, NA_real_), 0.1, 0.3),
+    Inf
+  )
+})
+
+test_that("optimize_unconstrained_variable() never increases the loss", {
+  data <- probability_small()
+  patient <- data$patient
+  set.seed(0)
+  index <- sample(1:2, nrow(patient), replace = TRUE)
+  beta <- c(-0.5, 0.3)
+  sigma <- c(NA_real_, NA_real_)
+  args <- list(z = patient$treatment, t = patient$time, d = patient$event)
+  loss <- function(index) {
+    sum(do.call(
+      retrogroup:::optimize_loss_terms,
+      c(list(x = index), args, list(beta = beta, sigma = sigma))
+    ))
+  }
+  before <- loss(index)
+  for (iterations in c(1L, 5L, 20L)) {
+    result <- do.call(
+      retrogroup:::optimize_unconstrained_variable,
+      c(
+        list(x = index),
+        args,
+        list(beta = beta, sigma = sigma),
+        list(iterations = iterations, tolerance = 0)
+      )
+    )
+    after <- loss(result$x)
+    expect_identical(result$loss, after)
+    expect_false(isTRUE(after > before))
+  }
+})
+
+test_that("group_optimize_unconstrained() warns if tolerance is not reached", {
+  data <- probability_example()
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, data$summary)
+  expect_warning(
+    group_optimize_unconstrained(sample, data$summary, iterations = 2L),
+    "did not fall below tolerance = 1e-06 within iterations = 2 for 3",
+    class = "retrogroup_warning"
+  )
+  warning <- tryCatch(
+    group_optimize_unconstrained(sample, data$summary, iterations = 2L),
+    retrogroup_warning = \(warning) warning
+  )
+  message <- conditionMessage(warning)
+  expect_match(message, "\"age\" = ", fixed = TRUE)
+  expect_match(message, "\"node4\" = ", fixed = TRUE)
+  expect_match(message, "\"sex\" = ", fixed = TRUE)
+  expect_match(message, "Increase iterations", fixed = TRUE)
+  summary <- data$summary[data$summary$variable == "age", ]
+  expect_warning(
+    group_optimize_unconstrained(sample, summary, iterations = 0L),
+    "for 1 subgroup variable",
+    class = "retrogroup_warning"
+  )
+})
+
+test_that("group_optimize_unconstrained() does not warn if tolerance is reached", {
+  data <- probability_example()
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, data$summary)
+  expect_no_warning(
+    group_optimize_unconstrained(sample, data$summary, tolerance = Inf)
+  )
+  expect_no_warning(
+    group_optimize_unconstrained(
+      sample,
+      data$summary,
+      iterations = 0L,
+      tolerance = Inf
+    )
+  )
+})
+
+test_that("warn_optimize_tolerance() only lists unconverged variables", {
+  loss <- c(age = 0.5, sex = 1e-8, node4 = Inf)
+  warning <- tryCatch(
+    retrogroup:::warn_optimize_tolerance(loss, 10L, 1e-6),
+    retrogroup_warning = \(warning) warning
+  )
+  message <- conditionMessage(warning)
+  expect_match(message, "for 2 subgroup variable", fixed = TRUE)
+  expect_match(message, "\"age\" = ", fixed = TRUE)
+  expect_match(message, "\"node4\" = ", fixed = TRUE)
+  expect_false(grepl("\"sex\"", message, fixed = TRUE))
+  expect_no_warning(
+    retrogroup:::warn_optimize_tolerance(c(age = 1e-8), 10L, 1e-6)
+  )
+})
+
+test_that("group_optimize_unconstrained() validates its arguments", {
+  data <- probability_example()
+  summary <- data$summary[data$summary$variable == "age", ]
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, summary)
+  expect_error(
+    group_optimize_unconstrained(data$patient, summary),
+    "Missing subgroup column",
+    class = "retrogroup_error"
+  )
+  bad <- sample
+  bad$age <- as.character(bad$age)
+  bad$age[1] <- "nonexistent"
+  expect_error(
+    group_optimize_unconstrained(bad, summary),
+    "only levels",
+    class = "retrogroup_error"
+  )
+  bad$age[1] <- NA_character_
+  expect_error(
+    group_optimize_unconstrained(bad, summary),
+    "only levels",
+    class = "retrogroup_error"
+  )
+  for (iterations in list(-1, 1.5, NA, c(1, 2), "1", Inf)) {
+    expect_error(
+      group_optimize_unconstrained(sample, summary, iterations = iterations),
+      "iterations",
+      class = "retrogroup_error"
+    )
+  }
+  for (tolerance in list(-1, NA_real_, c(1, 2), "1")) {
+    expect_error(
+      group_optimize_unconstrained(sample, summary, tolerance = tolerance),
+      "tolerance",
+      class = "retrogroup_error"
+    )
+  }
+  bad <- summary
+  bad$patients[1] <- 0L
+  expect_error(
+    group_optimize_unconstrained(sample, bad),
+    "summary is invalid",
+    class = "retrogroup_error"
+  )
+  expect_error(
+    group_optimize_unconstrained(as.list(sample), summary),
+    "data frame",
+    class = "retrogroup_error"
+  )
+})

@@ -1,0 +1,46 @@
+Package: retrogroup
+Title: Reconstruct Patient-Level Subgroup Membership in Survival Data
+Version: 0.0.1.9000
+Authors@R: c(
+  person(
+    given = c("William", "Michael"),
+    family = "Landau",
+    role = c("aut", "cre"),
+    email = "will.landau.oss@gmail.com",
+    comment = c(ORCID = "0000-0003-1878-3253")
+  ),
+  person(
+    family = "Eli Lilly and Company",
+    role = c("cph", "fnd")
+  ))
+Description: Patient-level survival outcomes for a whole clinical trial
+  are frequently available alongside published subgroup hazard ratios,
+  while the subgroup membership of each patient is not. 'retrogroup'
+  reconstructs subgroup membership from these two sources of information.
+  A Bayesian survival model estimates the posterior probability that each
+  patient belongs to each subgroup level, and a sampling method uses these
+  probabilities to impute a subgroup level for each patient.
+License: MIT + file LICENSE
+URL: https://wlandau.github.io/retrogroup/, https://github.com/wlandau/retrogroup
+BugReports: https://github.com/wlandau/retrogroup/issues
+Depends:
+  R (>= 4.1.0)
+Imports:
+    rlang,
+    stats,
+    survival,
+    tibble
+Suggests:
+    ggplot2,
+    knitr,
+    mirai,
+    rmarkdown,
+    rprojroot,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Language: en-US
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.1
+VignetteBuilder: knitr

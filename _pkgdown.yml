@@ -1,0 +1,47 @@
+url: https://wlandau.github.io/retrogroup
+repo:
+  url:
+    home: https://github.com/wlandau/retrogroup
+    source: https://github.com/wlandau/retrogroup
+    issue: https://github.com/wlandau/retrogroup/issues/
+template:
+  bootstrap: 5
+  math-rendering: mathjax
+  bslib:
+    primary: "#6F2C1C"
+  opengraph:
+    image:
+      src: man/figures/logo.png
+      alt: "retrogroup hex logo: a forest plot of subgroup hazard ratios"
+articles:
+- title: Methods
+  contents:
+  - framing
+  - model
+  - sampling
+  - optimization
+- title: Benchmarks
+  contents:
+  - benchmarks_sampling
+  - benchmarks_optimization
+reference:
+  - title: Example
+    contents:
+    - group_example_patient
+    - group_example_summary
+  - title: Data
+    contents:
+    - group_data_patient
+    - group_data_summary
+  - title: Sampling
+    contents:
+    - group_sample_constrained
+    - group_sample_unconstrained
+  - title: Optimization
+    contents:
+    - group_optimize_constrained
+    - group_optimize_unconstrained
+  - title: Analysis
+    contents:
+    - group_analysis_probability
+    - group_analysis_summary
