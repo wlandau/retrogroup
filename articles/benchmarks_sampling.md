@@ -16,8 +16,8 @@ simulated_patients <- 10000L # Full scale: 10000 patients per simulated dataset.
 simulated_reps <- 200L       # Full scale: 200 sampled datasets per simulated dataset and sampler.
 ```
 
-Rendered on 2026-11-19 with `retrogroup` 0.0.1.9000 at commit
-[1456151](https://github.com/wlandau/retrogroup/commit/1456151d70a9aa1ee0059dfb1d118a5df58ab16c).
+Rendered on 2026-11-19 with `retrogroup` 0.0.2 at commit
+[0a22d0a](https://github.com/wlandau/retrogroup/commit/0a22d0a7335a403d6340d3eb3eb4e3bf2aead697).
 
 ## Purpose
 
