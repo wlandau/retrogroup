@@ -1,0 +1,166 @@
+# The model and posterior
+
+``` r
+
+library(retrogroup)
+```
+
+This vignette builds on
+[`vignette("framing", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/framing.md)
+and defines a Bayesian survival model to guide the reconstruction. Our
+goal is to construct the posterior probability of a patient belonging to
+a particular subgroup level given the observed survival data and
+treatment assignment.
+[`vignette("sampling", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/sampling.md)
+uses estimates of these posterior probabilities to sample subgroup
+assignments for each patient. We begin by defining the hazard rate for a
+proportional hazards model, then write out the likelihood, derive the
+posterior probability of subgroup membership, and finally show how to
+estimate it.
+
+## Hazard rate
+
+Along with the notation in
+[`vignette("framing", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/framing.md),
+define:
+
+- \\x_i\\: the unknown subgroup level of patient \\i\\, a value in \\1,
+  \ldots, K\\. `retrogroup` seeks values of \\x_1, \ldots, x_n\\ that
+  are consistent with the published subgroup statistics from
+  [`vignette("framing", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/framing.md).
+- \\t\\ and \\z\\: generic time and treatment indicator (1 for
+  treatment, 0 for control), respectively.
+- \\\lambda_0(t)\\: the baseline hazard rate at time \\t\\, i.e. the
+  hazard rate of a control patient (\\z = 0\\), which is the same for
+  every subgroup level \\k\\.
+
+We define a proportional hazards model for the hazard rate, given a
+subgroup level \\k\\ and treatment indicator \\z\\:
+
+\\ \lambda(t \mid k, z) := \lambda_0(t) \exp(\beta_k z) \\
+
+We will also need the cumulative hazard, defined as:
+
+\\ \Lambda(t \mid k, z) := \int_0^t \lambda(u \mid k, z) du \\
+
+which simplifies to:
+
+\\ \Lambda(t \mid k, z) = \exp(\beta_k z) \Lambda_0(t) \\
+
+where the baseline cumulative hazard is defined as:
+
+\\ \Lambda_0(t) := \int_0^t \lambda_0(u) du \\
+
+## Likelihood
+
+We write the individual patient likelihood from Rodríguez (2010) in
+terms of the hazard rate above and survival function \\S(t \mid k, z)\\.
+Unlike typical survival models, we have fixed values for \\\beta_k\\,
+and the \\x_i\\ values are the unknown parameters of interest.
+
+\\ L(x_i \mid t_i, d_i, z_i) = \lambda(t_i \mid x_i, z_i)^{d_i} S(t_i
+\mid x_i, z_i) \\
+
+Because \\S(t \mid k, z) = \exp(-\Lambda(t \mid k, z))\\, we can express
+the likelihood in terms of the baseline hazard rate and baseline
+cumulative hazard:
+
+\\ L(x_i \mid t_i, d_i, z_i) = \left\[\lambda_0(t_i) \exp(\beta\_{x_i}
+z_i)\right\]^{d_i} \\ \exp(-\Lambda_0(t_i) \exp(\beta\_{x_i} z_i)) \\
+
+This likelihood assumes that censoring is noninformative and does not
+depend on the subgroup level.
+
+## Posterior
+
+Because treatment is randomized, \\x_i\\ is independent of \\z_i\\ a
+priori. Using prior \\\pi_k\\ and likelihood \\L(k \mid t_i, d_i,
+z_i)\\, Bayes’ Theorem gives the posterior probability that patient
+\\i\\ belongs to subgroup level \\k\\:
+
+\\ P(x_i = k \mid t_i, d_i, z_i) = \frac{\pi_k L(k \mid t_i, d_i,
+z_i)}{\sum\_{l=1}^K \pi_l L(l \mid t_i, d_i, z_i)} \\
+
+For the prior of subgroup level \\k\\, we use the published fraction of
+patients belonging to each subgroup level:
+
+\\ \pi_k := \frac{n_k}{n} \\
+
+Every \\\pi_k\\ is strictly positive because
+[`vignette("framing", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/framing.md)
+requires \\n_k \> 0\\ for every subgroup level in the analysis.
+
+Substituting in expressions for the likelihood and prior:
+
+\\ P(x_i = k \mid t_i, d_i, z_i) = \frac{\frac{n_k}{n}
+\left\[\lambda_0(t_i) \exp(\beta_k z_i)\right\]^{d_i} \\
+\exp(-\Lambda_0(t_i) \exp(\beta_k z_i))}{\sum\_{l=1}^K \frac{n_l}{n}
+\left\[\lambda_0(t_i) \exp(\beta_l z_i)\right\]^{d_i} \\
+\exp(-\Lambda_0(t_i) \exp(\beta_l z_i))} \\
+
+The baseline hazard rate and total sample size cancel:
+
+\\ P(x_i = k \mid t_i, d_i, z_i) = \frac{n_k \left\[\exp(\beta_k
+z_i)\right\]^{d_i} \\ \exp(-\Lambda_0(t_i) \exp(\beta_k
+z_i))}{\sum\_{l=1}^K n_l \left\[\exp(\beta_l z_i)\right\]^{d_i} \\
+\exp(-\Lambda_0(t_i) \exp(\beta_l z_i))} \\
+
+## Computation
+
+The posterior probability above depends on the baseline cumulative
+hazard \\\Lambda_0(t)\\, which is unknown. To estimate it, we use the
+control arm. Every control patient \\i\\ has \\z_i = 0\\ and therefore
+hazard rate \\\lambda_0(t)\\ regardless of the unknown subgroup level
+\\x_i\\. So the Nelson-Aalen estimator (Klein and Moeschberger 2003,
+sec. 4.2) applied to the control arm estimates \\\Lambda_0(t)\\
+directly:
+
+\\ \hat{\Lambda}\_0(t) := \sum\_{i = 1}^n I(z_i = 0) \\ I(t_i \le t) \\
+\frac{d_i}{\max(r_i, 1)} \\
+
+where \\r_i\\ is the number of control patients still at risk at time
+\\t_i\\:
+
+\\ r_i := \sum\_{j = 1}^n I(z_j = 0) \\ I(t_j \ge t_i) \\
+
+Every control patient \\i\\ has \\r_i \ge 1\\, so \\\max(r_i, 1) = r_i\\
+in every term with \\I(z_i = 0) = 1\\. A patient \\i\\ with \\z_i = 1\\
+can have \\r_i = 0\\, and the maximum keeps that term well defined, so
+terms with \\I(z_i = 0) = 0\\ contribute zero to the sum. This estimator
+uses only the control arm events, so it gives up some precision in
+exchange for not depending on the unknown subgroup levels.
+
+For each patient \\i\\ and each potential subgroup level \\k\\, we
+define a log-scale weight:
+
+\\ w\_{ik} := \log (n_k) + d_i \beta_k z_i - \hat{\Lambda}\_0(t_i)
+\exp(\beta_k z_i) \\
+
+We then define \\p\_{ik}\\ as our estimate of the posterior probability
+\\P(x_i = k \mid t_i, d_i, z_i)\\, obtained by replacing
+\\\Lambda_0(t_i)\\ with \\\hat{\Lambda}\_0(t_i)\\:
+
+\\ p\_{ik} := \frac{\exp(w\_{ik})}{\sum\_{l=1}^K \exp(w\_{il})} \\
+
+Every \\p\_{ik}\\ is strictly positive: because \\n_k \> 0\\, each
+\\w\_{ik}\\ is finite, so each \\\exp(w\_{ik})\\ is positive. In
+floating point arithmetic, a positive \\p\_{ik}\\ can still be
+numerically indistinguishable from zero, so `retrogroup` throws an error
+if any \\p\_{ik}\\ is less than the square root of machine epsilon.
+
+Each \\p\_{ik}\\ is available in closed form. Its only inputs are the
+survival data and the published subgroup statistics from
+[`vignette("framing", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/framing.md),
+and computing it requires no iteration or model fitting. These
+\\p\_{ik}\\ values are what
+[`vignette("sampling", package = "retrogroup")`](https://wlandau.github.io/retrogroup/articles/sampling.md)
+uses to sample subgroup assignments.
+
+## References
+
+Klein, John P., and Melvin L. Moeschberger. 2003. *Survival Analysis:
+Techniques for Censored and Truncated Data*. 2nd ed. Statistics for
+Biology and Health. Springer. <https://doi.org/10.1007/b97377>.
+
+Rodríguez, Germán. 2010. *Parametric Survival Models*.
+<https://grodri.github.io/survival/ParametricSurvival.pdf>.

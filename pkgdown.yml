@@ -1,0 +1,14 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  benchmarks_optimization: benchmarks_optimization.html
+  benchmarks_sampling: benchmarks_sampling.html
+  framing: framing.html
+  model: model.html
+  optimization: optimization.html
+  sampling: sampling.html
+last_built: 2026-11-19T19:05Z
+urls:
+  reference: https://wlandau.github.io/retrogroup/reference
+  article: https://wlandau.github.io/retrogroup/articles
