@@ -40,22 +40,15 @@ For the hazard ratio of subgroup level $k$, we fit a Cox proportional hazards mo
 The model is fit by partial likelihood, which leaves the baseline hazard unspecified [@cox1972; @cox1975], as in `survival::coxph()`.
 Let $\hat{\beta}_k(x)$ be the estimated log hazard ratio of treatment versus control, and let $\beta_k$ be the assumed log hazard ratio for subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
 
-For the event fraction of subgroup level $k$, let $\hat{n}_k(x)$ be the observed number of patients currently assigned to that level:
+For the event fraction of subgroup level $k$, let $\hat{f}_k(x)$ be the observed number of events in that level divided by the assumed number of patients $n_k$:
 
 $$
-\hat{n}_k(x) := \sum_{i = 1}^n I(x_i = k)
-$$
-
-Let $\hat{f}_k(x)$ be the observed event fraction of subgroup level $k$, the observed number of events divided by the observed number of patients:
-
-$$
-\hat{f}_k(x) := \frac{1}{\hat{n}_k(x)} \sum_{i = 1}^n I(x_i = k) d_i
+\hat{f}_k(x) := \frac{1}{n_k} \sum_{i = 1}^n I(x_i = k) d_i
 $$
 
 and let $f_k := e_k / n_k$ be the assumed event fraction from `vignette("framing", package = "retrogroup")`.
-Under constrained sampling, $\hat{n}_k(x) = n_k$ throughout the search, so the denominator reduces to $n_k$.
-Under unconstrained sampling, $\hat{n}_k(x)$ generally differs from the assumed subgroup count $n_k$ and changes whenever a flip moves a patient, so $\hat{n}_k(x)$ is recomputed from $x$ every time the loss is evaluated.
-
+The denominator is the assumed count $n_k$ under both constrained and unconstrained sampling, even when the observed number of patients in level $k$ differs from $n_k$.
+Its only role is to put the event counts on a scale comparable to that of the hazard ratios.
 
 The loss is the Euclidean distance between the observed and assumed hazard ratios and event fractions:
 
@@ -63,8 +56,16 @@ $$
 \Delta(x) := \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat{\beta}_k(x)\right) - \exp \left (\beta_k\right) \right)^2 + \sum_{k = 1}^K \left( \hat{f}_k(x) - f_k \right)^2}
 $$
 
-The event fraction terms are a soft constraint: they steer the subgroup event fractions toward their assumed values without forcing them to match.
-Under constrained sampling, where $\hat{n}_k(x) = n_k$, this is the same as steering the subgroup event counts toward $e_1, \ldots, e_K$.
+Because both event fractions share the denominator $n_k$, each event fraction term is the squared difference between the observed and assumed event counts, scaled by $1 / n_k^2$:
+
+$$
+\left( \hat{f}_k(x) - f_k \right)^2 = \frac{1}{n_k^2} \left( \sum_{i = 1}^n I(x_i = k) d_i - e_k \right)^2
+$$
+
+The event fraction terms are a soft constraint: they steer the subgroup event counts toward $e_1, \ldots, e_K$ without forcing them to match.
+They do not steer the observed number of patients in each level.
+Under unconstrained sampling, the observed number of patients in level $k$ can drift away from $n_k$ during the search.
+Under constrained sampling, swaps keep it at $n_k$.
 Hazard ratios and event fractions are both unitless and of similar magnitude, so the two sets of terms are not weighted.
 The square root puts the loss, and therefore the user-specified tolerance, on the same scale as the hazard ratios and event fractions.
 
@@ -138,10 +139,10 @@ Each iteration takes a flip step with probability $1/2$ and a swap step otherwis
 If no swap is possible, the iteration takes a flip step instead.
 
 The method needs both moves.
-With flips alone, the search often stalls at a loss well above the tolerance, even when the observed event fractions already match the assumed event fractions $f_k = e_k / n_k$.
+With flips alone, the search often stalls at a loss well above the tolerance, even when the observed event counts already match the assumed event counts $e_1, \ldots, e_K$.
 In that situation, no flip reduces the loss, but exchanging two patients can still bring the hazard ratios closer to their targets without changing the subgroup sizes.
 
-The loss steers the event fractions toward their assumed values, but nothing in the optimization preserves the subgroup counts.
+The loss steers the event counts toward their assumed values, but nothing in the optimization preserves the subgroup counts.
 To preserve the subgroup counts, we need constrained sampling and its optimization.
 
 ## Optimization for constrained sampling

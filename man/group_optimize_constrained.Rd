@@ -64,10 +64,12 @@ subgroup level with treatment as the only covariate, as in
 level, for example because one of its arms has no events, the loss is
 infinite.
 
-Each iteration draws a pair of patients \eqn{(i, j)} uniformly at
-random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
-levels if the swap reduces the loss. Otherwise, the subgroup levels
-stay the same, so the loss never increases. If no such pair exists,
+Each iteration takes a swap step, as defined in the "Moves" section of
+the vignette. A swap step draws a pair of patients \eqn{(i, j)}
+uniformly at random from the pairs with \eqn{x_i \ne x_j} and
+exchanges their subgroup levels if the exchange reduces the loss.
+Otherwise, the subgroup levels stay the same, so the loss never
+increases. If no such pair exists,
 no swap is possible and the subgroup levels are returned unchanged.
 The search for each subgroup variable stops when the loss falls below
 \code{tolerance} or after \code{iterations} iterations,

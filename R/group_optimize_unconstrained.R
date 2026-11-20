@@ -10,21 +10,30 @@
 #'   subgroup variable. The loss \eqn{\Delta(x)} is the Euclidean
 #'   distance between the observed and assumed hazard ratios and event
 #'   fractions of the levels of the subgroup variable, as defined in the
-#'   "Loss function" section of that vignette. The event fraction of a
-#'   level is its number of events divided by its assumed number of
-#'   patients in `summary$patients`, and the assumed event fraction is
-#'   `summary$events / summary$patients`. The event fraction terms are a
-#'   soft constraint: they steer the event counts toward `summary$events`
-#'   without forcing them to match. The observed hazard ratios come from a Cox proportional
-#'   hazards model of each subgroup level with treatment as the only
+#'   "Loss function" section of that vignette. The observed event fraction
+#'   of a level is its observed number of events divided by its assumed
+#'   number of patients in `summary$patients`, and the assumed event
+#'   fraction is `summary$events / summary$patients`. The denominator only
+#'   puts the event counts on a scale comparable to the hazard ratios, so
+#'   the event fraction terms are a soft constraint that steers the event
+#'   counts toward `summary$events` without forcing them to match. The event
+#'   fraction terms do not depend on the observed number of patients in each
+#'   level. The observed hazard ratios come from a Cox proportional hazards
+#'   model of each subgroup level with treatment as the only
 #'   covariate, as in [survival::coxph()]. If the model cannot be fit for
 #'   some subgroup level, for example because the level is empty or one of
 #'   its arms has no events, the loss is infinite.
 #'
-#'   Each iteration draws a patient \eqn{i} uniformly at random and moves
-#'   that patient to the subgroup level \eqn{k} that minimizes
-#'   \eqn{\Delta(x^{(i \to k)})}. The patient stays put if the current
-#'   level ties for the minimum, so the loss never increases. The search
+#'   Each iteration takes a flip step with probability 1/2 and a swap step
+#'   otherwise, as defined in the "Moves" section of the vignette. If no
+#'   swap is possible, the iteration takes a flip step instead. A flip step
+#'   draws a patient \eqn{i} uniformly at random and moves that patient to
+#'   the subgroup level \eqn{k} that minimizes \eqn{\Delta(x^{(i \to k)})},
+#'   or leaves the patient in place if the current level ties for the
+#'   minimum. A swap step draws a pair of patients \eqn{(i, j)} uniformly
+#'   at random from the pairs with \eqn{x_i \ne x_j} and exchanges their
+#'   subgroup levels if the exchange reduces the loss. Neither step ever
+#'   increases the loss. The search
 #'   for each subgroup variable stops when the loss falls below `tolerance`
 #'   or after `iterations` iterations,
 #'   whichever comes first. If the loss of any subgroup variable is still
@@ -64,8 +73,8 @@
 #'   `summary$level`, in the same order. All other columns are unchanged.
 #' @inheritParams group_analysis_probability
 #' @param iterations Non-negative whole number, the maximum number of
-#'   iterations for each subgroup variable. Each iteration draws one
-#'   patient and fits one Cox model per subgroup level.
+#'   iterations for each subgroup variable. A flip step fits one Cox model
+#'   per subgroup level, and a swap step fits two Cox models.
 #' @param tolerance Non-negative number on the linear (natural) scale of
 #'   the hazard ratio, not the log scale, and on the scale of the event
 #'   fractions. The search for each subgroup variable stops when the loss
@@ -193,64 +202,24 @@ optimize_unconstrained_variable <- function(
   iterations,
   tolerance
 ) {
-  n <- length(x)
-  K <- length(hazard_ratio)
-  # Loss term of subgroup level k if its patients are the ones in members.
-  loss_term <- function(members, k) {
-    fit <- analysis_fit(z[members], t[members], d[members])
-    optimize_loss_term(
-      fit = fit,
-      observed = sum(d[members]),
-      hazard_ratio = hazard_ratio[k],
-      patients = patients[k],
-      events = events[k]
-    )
-  }
+  problem <- optimize_problem(z, t, d, hazard_ratio, patients, events)
   # Loss terms of x, one per subgroup level, and the loss Delta(x).
-  terms <- optimize_loss_terms(x, z, t, d, hazard_ratio, patients, events)
+  terms <- optimize_loss_terms(x, problem)
   loss <- sqrt(sum(terms))
   iteration <- 0L
   while (iteration < iterations && !(loss < tolerance)) {
     iteration <- iteration + 1L
-    # Step 1: draw a patient i uniformly at random from 1, ..., n.
-    i <- sample.int(n, 1L)
-    x_i <- x[i]
-    # Step 2: compute the counterfactual loss Delta(x^(i -> k)) for every
-    # subgroup level k = 1, ..., K. A flip from level x_i to level k changes
-    # the patients in those two levels only, so every other loss term
-    # carries over from x. Column k of counterfactual_terms holds the loss
-    # terms of x^(i -> k), and column x_i holds those of x itself.
-    # Each iteration needs K model fits: one for level x_i without
-    # patient i, and one for each other level k with patient i.
-    members <- x == x_i
-    members[i] <- FALSE
-    term_without_i <- loss_term(members, x_i)
-    counterfactual_terms <- vapply(
-      seq_len(K),
-      \(k) {
-        if (k == x_i) {
-          return(terms)
-        }
-        members <- x == k
-        members[i] <- TRUE
-        flipped <- terms
-        flipped[x_i] <- term_without_i
-        flipped[k] <- loss_term(members, k)
-        flipped
-      },
-      numeric(K)
-    )
-    counterfactual_loss <- sqrt(colSums(counterfactual_terms))
-    # Step 3: update x <- x^(i -> k_star), where k_star minimizes the
-    # counterfactual loss. The candidates include x^(i -> x_i) = x, so the
-    # loss never increases. If the current level x_i ties for the minimum,
-    # the patient stays put.
-    k_star <- which.min(counterfactual_loss)
-    if (counterfactual_loss[k_star] < loss) {
-      x[i] <- k_star
-      terms <- counterfactual_terms[, k_star]
-      loss <- counterfactual_loss[k_star]
+    # Take a flip step with probability 1/2 and a swap step otherwise.
+    # If no swap is possible, take a flip step instead.
+    swap <- stats::runif(1L) < 0.5 && optimize_swap_possible(x)
+    move <- if (swap) {
+      optimize_swap(x, terms, loss, problem)
+    } else {
+      optimize_flip(x, terms, loss, problem)
     }
+    x[move$index] <- move$level
+    terms <- move$terms
+    loss <- move$loss
   }
   list(x = x, loss = unname(loss))
 }

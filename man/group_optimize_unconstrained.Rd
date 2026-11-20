@@ -19,8 +19,8 @@ group_optimize_unconstrained(
 \code{\link[=group_data_summary]{group_data_summary()}}.}
 
 \item{iterations}{Non-negative whole number, the maximum number of
-iterations for each subgroup variable. Each iteration draws one
-patient and fits one Cox model per subgroup level.}
+iterations for each subgroup variable. A flip step fits one Cox model
+per subgroup level, and a swap step fits two Cox models.}
 
 \item{tolerance}{Non-negative number on the linear (natural) scale of
 the hazard ratio, not the log scale, and on the scale of the event
@@ -56,21 +56,30 @@ statistics in \code{summary}. Patient counts are not preserved.
 subgroup variable. The loss \eqn{\Delta(x)} is the Euclidean
 distance between the observed and assumed hazard ratios and event
 fractions of the levels of the subgroup variable, as defined in the
-"Loss function" section of that vignette. The event fraction of a
-level is its number of events divided by its assumed number of
-patients in \code{summary$patients}, and the assumed event fraction is
-\code{summary$events / summary$patients}. The event fraction terms are a
-soft constraint: they steer the event counts toward \code{summary$events}
-without forcing them to match. The observed hazard ratios come from a Cox proportional
-hazards model of each subgroup level with treatment as the only
+"Loss function" section of that vignette. The observed event fraction
+of a level is its observed number of events divided by its assumed
+number of patients in \code{summary$patients}, and the assumed event
+fraction is \code{summary$events / summary$patients}. The denominator only
+puts the event counts on a scale comparable to the hazard ratios, so
+the event fraction terms are a soft constraint that steers the event
+counts toward \code{summary$events} without forcing them to match. The event
+fraction terms do not depend on the observed number of patients in each
+level. The observed hazard ratios come from a Cox proportional hazards
+model of each subgroup level with treatment as the only
 covariate, as in \code{\link[survival:coxph]{survival::coxph()}}. If the model cannot be fit for
 some subgroup level, for example because the level is empty or one of
 its arms has no events, the loss is infinite.
 
-Each iteration draws a patient \eqn{i} uniformly at random and moves
-that patient to the subgroup level \eqn{k} that minimizes
-\eqn{\Delta(x^{(i \to k)})}. The patient stays put if the current
-level ties for the minimum, so the loss never increases. The search
+Each iteration takes a flip step with probability 1/2 and a swap step
+otherwise, as defined in the "Moves" section of the vignette. If no
+swap is possible, the iteration takes a flip step instead. A flip step
+draws a patient \eqn{i} uniformly at random and moves that patient to
+the subgroup level \eqn{k} that minimizes \eqn{\Delta(x^{(i \to k)})},
+or leaves the patient in place if the current level ties for the
+minimum. A swap step draws a pair of patients \eqn{(i, j)} uniformly
+at random from the pairs with \eqn{x_i \ne x_j} and exchanges their
+subgroup levels if the exchange reduces the loss. Neither step ever
+increases the loss. The search
 for each subgroup variable stops when the loss falls below \code{tolerance}
 or after \code{iterations} iterations,
 whichever comes first. If the loss of any subgroup variable is still

@@ -17,10 +17,12 @@
 #'   level, for example because one of its arms has no events, the loss is
 #'   infinite.
 #'
-#'   Each iteration draws a pair of patients \eqn{(i, j)} uniformly at
-#'   random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
-#'   levels if the swap reduces the loss. Otherwise, the subgroup levels
-#'   stay the same, so the loss never increases. If no such pair exists,
+#'   Each iteration takes a swap step, as defined in the "Moves" section of
+#'   the vignette. A swap step draws a pair of patients \eqn{(i, j)}
+#'   uniformly at random from the pairs with \eqn{x_i \ne x_j} and
+#'   exchanges their subgroup levels if the exchange reduces the loss.
+#'   Otherwise, the subgroup levels stay the same, so the loss never
+#'   increases. If no such pair exists,
 #'   no swap is possible and the subgroup levels are returned unchanged.
 #'   The search for each subgroup variable stops when the loss falls below
 #'   `tolerance` or after `iterations` iterations,
@@ -171,66 +173,23 @@ optimize_constrained_variable <- function(
   iterations,
   tolerance
 ) {
-  K <- length(hazard_ratio)
-  # Loss term of subgroup level k if its patients are the ones in members.
-  loss_term <- function(members, k) {
-    fit <- analysis_fit(z[members], t[members], d[members])
-    optimize_loss_term(
-      fit = fit,
-      observed = sum(d[members]),
-      hazard_ratio = hazard_ratio[k],
-      patients = patients[k],
-      events = events[k]
-    )
-  }
+  problem <- optimize_problem(z, t, d, hazard_ratio, patients, events)
   # Loss terms of x, one per subgroup level, and the loss Delta(x).
-  terms <- optimize_loss_terms(x, z, t, d, hazard_ratio, patients, events)
+  terms <- optimize_loss_terms(x, problem)
   loss <- sqrt(sum(terms))
-  # Swaps preserve the number of patients n_k in each subgroup level k,
-  # so the number of pairs (i, j) with x_i = k and x_j = l is n_k * n_l
-  # in every iteration. Each unordered pair of distinct levels k < l is
-  # one row of level_pairs, with weight n_k * n_l.
-  n <- tabulate(x, nbins = K)
-  level_pairs <- which(upper.tri(diag(K)), arr.ind = TRUE)
-  weights <- n[level_pairs[, 1L]] * n[level_pairs[, 2L]]
-  # Without any pair of patients in different levels, no swap is possible.
-  if (!any(weights > 0)) {
+  # Swaps preserve the subgroup counts, so if no swap is possible now,
+  # no swap is ever possible.
+  if (!optimize_swap_possible(x)) {
     return(list(x = x, loss = unname(loss)))
   }
   iteration <- 0L
   while (iteration < iterations && !(loss < tolerance)) {
     iteration <- iteration + 1L
-    # Step 1: draw a pair of patients (i, j) uniformly at random from the
-    # pairs with x_i != x_j. First draw the pair of levels (x_i, x_j) with
-    # probability proportional to the number of such pairs n_k * n_l, then
-    # draw i and j uniformly from the patients in those levels.
-    pair <- level_pairs[sample.int(nrow(level_pairs), 1L, prob = weights), ]
-    x_i <- pair[[1L]]
-    x_j <- pair[[2L]]
-    patients_i <- which(x == x_i)
-    patients_j <- which(x == x_j)
-    i <- patients_i[sample.int(length(patients_i), 1L)]
-    j <- patients_j[sample.int(length(patients_j), 1L)]
-    # Step 2: compute the loss Delta(x^(i <-> j)) of the swap. A swap changes
-    # the patients in levels x_i and x_j only, so every other loss term
-    # carries over from x. Each iteration needs two model fits: one for
-    # level x_i with j in place of i, and one for level x_j with i in place
-    # of j.
-    members_i <- x == x_i
-    members_i[c(i, j)] <- c(FALSE, TRUE)
-    members_j <- x == x_j
-    members_j[c(i, j)] <- c(TRUE, FALSE)
-    swapped_terms <- terms
-    swapped_terms[x_i] <- loss_term(members_i, x_i)
-    swapped_terms[x_j] <- loss_term(members_j, x_j)
-    swapped_loss <- sqrt(sum(swapped_terms))
-    # Step 3: update x <- x^(i <-> j) if the swap reduces the loss, and
-    # otherwise leave x unchanged, so the loss never increases.
-    if (swapped_loss < loss) {
-      x[c(i, j)] <- c(x_j, x_i)
-      terms <- swapped_terms
-      loss <- swapped_loss
-    }
+    # Every iteration takes a swap step.
+    move <- optimize_swap(x, terms, loss, problem)
+    x[move$index] <- move$level
+    terms <- move$terms
+    loss <- move$loss
   }
   list(x = x, loss = unname(loss))
 }

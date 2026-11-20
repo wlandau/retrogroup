@@ -22,21 +22,21 @@ optimize_loss_term <- function(fit, observed, hazard_ratio, patients, events) {
   if (is.na(fit)) {
     return(Inf)
   }
+  # Both event fractions divide by the assumed number of patients n_k,
+  # which only puts the event counts on the scale of the hazard ratios.
   (exp(fit) - hazard_ratio)^2 + ((observed - events) / patients)^2
 }
 
-#' @title Loss terms of all levels of one subgroup variable
+#' @title Loss term of one subgroup level with the given patients
 #' @noRd
-#' @return Numeric vector with one loss term per level. The loss
-#'   \eqn{\Delta(x)} is the square root of the sum.
-#' @param x Integer vector with one element per patient: the index of
-#'   the current subgroup level \eqn{x_i} of each patient.
-#' @param z Integer vector, treatment indicator of each patient.
-#' @param t Numeric vector, time of each patient.
-#' @param d Integer vector, event indicator of each patient.
-#' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
-#' @param patients Integer vector, assumed number of patients of each level.
-#' @param events Integer vector, assumed number of events of each level.
+#' @return Numeric scalar, the loss term of subgroup level `k` if its
+#'   patients are those in `members`, from `optimize_loss_term()`.
+#'   Needs one model fit.
+#' @param members Logical vector with one element per patient, `TRUE` for
+#'   the patients in subgroup level `k`.
+#' @param k Integer scalar, index of the subgroup level.
+#' @param problem List of the fixed inputs of the search, from
+#'   `optimize_problem()`.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -47,9 +47,7 @@ optimize_loss_term <- function(fit, observed, hazard_ratio, patients, events) {
 #'   )
 #'   summary <- group_example_summary()
 #'   sex <- summary[summary$variable == "sex", ]
-#'   x <- sample.int(2L, nrow(patient), replace = TRUE)
-#'   optimize_loss_terms(
-#'     x = x,
+#'   problem <- optimize_problem(
 #'     z = patient$treatment,
 #'     t = patient$time,
 #'     d = patient$event,
@@ -57,23 +55,272 @@ optimize_loss_term <- function(fit, observed, hazard_ratio, patients, events) {
 #'     patients = sex$patients,
 #'     events = sex$events
 #'   )
-optimize_loss_terms <- function(x, z, t, d, hazard_ratio, patients, events) {
+#'   x <- sample.int(2L, nrow(patient), replace = TRUE)
+#'   optimize_level_term(x == 1L, 1L, problem)
+optimize_level_term <- function(members, k, problem) {
+  d <- problem$d[members]
+  fit <- analysis_fit(problem$z[members], problem$t[members], d)
+  optimize_loss_term(
+    fit = fit,
+    observed = sum(d),
+    hazard_ratio = problem$hazard_ratio[k],
+    patients = problem$patients[k],
+    events = problem$events[k]
+  )
+}
+
+#' @title Fixed inputs of the search for one subgroup variable
+#' @noRd
+#' @return A list with the arguments as elements. The list refers to the
+#'   argument vectors without copying them.
+#' @param z Integer vector, treatment indicator of each patient.
+#' @param t Numeric vector, time of each patient.
+#' @param d Integer vector, event indicator of each patient.
+#' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
+#' @param patients Integer vector, assumed number of patients of each level.
+#' @param events Integer vector, assumed number of events of each level.
+#' @examples
+#'   optimize_problem(
+#'     z = c(0L, 1L, 0L, 1L),
+#'     t = c(1, 2, 3, 4),
+#'     d = c(1L, 1L, 0L, 1L),
+#'     hazard_ratio = c(0.8, 1.2),
+#'     patients = c(2L, 2L),
+#'     events = c(1L, 2L)
+#'   )
+optimize_problem <- function(z, t, d, hazard_ratio, patients, events) {
+  list(
+    z = z,
+    t = t,
+    d = d,
+    hazard_ratio = hazard_ratio,
+    patients = patients,
+    events = events
+  )
+}
+
+#' @title Loss terms of all levels of one subgroup variable
+#' @noRd
+#' @return Numeric vector with one loss term per level. The loss
+#'   \eqn{\Delta(x)} is the square root of the sum.
+#' @param x Integer vector with one element per patient: the index of
+#'   the current subgroup level \eqn{x_i} of each patient.
+#' @inheritParams optimize_level_term
+#' @examples
+#'   patient <- group_data_patient(
+#'     group_example_patient(),
+#'     arm = "arm",
+#'     treatment = "Lev+5FU",
+#'     time = "time",
+#'     event = "event"
+#'   )
+#'   summary <- group_example_summary()
+#'   sex <- summary[summary$variable == "sex", ]
+#'   problem <- optimize_problem(
+#'     z = patient$treatment,
+#'     t = patient$time,
+#'     d = patient$event,
+#'     hazard_ratio = sex$hazard_ratio,
+#'     patients = sex$patients,
+#'     events = sex$events
+#'   )
+#'   x <- sample.int(2L, nrow(patient), replace = TRUE)
+#'   optimize_loss_terms(x, problem)
+optimize_loss_terms <- function(x, problem) {
   vapply(
-    seq_along(hazard_ratio),
-    \(k) {
-      members <- x == k
-      fit <- analysis_fit(z[members], t[members], d[members])
-      optimize_loss_term(
-        fit = fit,
-        observed = sum(d[members]),
-        hazard_ratio = hazard_ratio[k],
-        patients = patients[k],
-        events = events[k]
-      )
-    },
+    seq_along(problem$hazard_ratio),
+    \(k) optimize_level_term(x == k, k, problem),
     numeric(1L)
   )
 }
+
+#' @title Flip step
+#' @noRd
+#' @description Implements the flip step in the "Moves" section of
+#'   `vignette("optimization", package = "retrogroup")`. The step reads
+#'   the current state of the search and returns the move without
+#'   modifying `x`.
+#' @return A move: a list with elements
+#'   * `index`: integer scalar, the patient \eqn{i} drawn in step 1.
+#'   * `level`: integer scalar, the level \eqn{k^*} of patient \eqn{i}
+#'     after step 3. Equals `x[index]` if the patient stays put.
+#'   * `terms`: numeric vector, the loss terms of the assignments after
+#'     step 3.
+#'   * `loss`: numeric scalar, the loss \eqn{\Delta} after step 3, never
+#'     greater than `loss`.
+#'
+#'   Apply the move with `x[move$index] <- move$level`.
+#' @param x Integer vector with one element per patient: the index of
+#'   the current subgroup level \eqn{x_i} of each patient.
+#' @param terms Numeric vector, the loss terms of `x` from
+#'   `optimize_loss_terms()`.
+#' @param loss Numeric scalar, the loss \eqn{\Delta(x)}, equal to
+#'   `sqrt(sum(terms))`.
+#' @inheritParams optimize_level_term
+#' @examples
+#'   patient <- group_data_patient(
+#'     group_example_patient(),
+#'     arm = "arm",
+#'     treatment = "Lev+5FU",
+#'     time = "time",
+#'     event = "event"
+#'   )
+#'   summary <- group_example_summary()
+#'   sex <- summary[summary$variable == "sex", ]
+#'   problem <- optimize_problem(
+#'     z = patient$treatment,
+#'     t = patient$time,
+#'     d = patient$event,
+#'     hazard_ratio = sex$hazard_ratio,
+#'     patients = sex$patients,
+#'     events = sex$events
+#'   )
+#'   x <- sample.int(2L, nrow(patient), replace = TRUE)
+#'   terms <- optimize_loss_terms(x, problem)
+#'   move <- optimize_flip(x, terms, sqrt(sum(terms)), problem)
+#'   x[move$index] <- move$level
+optimize_flip <- function(x, terms, loss, problem) {
+  K <- length(terms)
+  # Step 1: draw a patient i uniformly at random from 1, ..., n.
+  i <- sample.int(length(x), 1L)
+  x_i <- x[i]
+  # Step 2: compute the counterfactual loss Delta(x^(i -> k)) for every
+  # subgroup level k = 1, ..., K. A flip from level x_i to level k changes
+  # the patients in those two levels only, so every other loss term
+  # carries over from x. Column k of counterfactual_terms holds the loss
+  # terms of x^(i -> k), and column x_i holds those of x itself.
+  # The step needs K model fits: one for level x_i without patient i,
+  # and one for each other level k with patient i.
+  members <- x == x_i
+  members[i] <- FALSE
+  term_without_i <- optimize_level_term(members, x_i, problem)
+  counterfactual_terms <- vapply(
+    seq_len(K),
+    \(k) {
+      if (k == x_i) {
+        return(terms)
+      }
+      members <- x == k
+      members[i] <- TRUE
+      flipped <- terms
+      flipped[x_i] <- term_without_i
+      flipped[k] <- optimize_level_term(members, k, problem)
+      flipped
+    },
+    numeric(K)
+  )
+  # vapply() returns a vector instead of a matrix when K = 1.
+  dim(counterfactual_terms) <- c(K, K)
+  counterfactual_loss <- sqrt(colSums(counterfactual_terms))
+  # Step 3: update x <- x^(i -> k_star), where k_star minimizes the
+  # counterfactual loss. The candidates include x^(i -> x_i) = x, so the
+  # loss never increases. If the current level x_i ties for the minimum,
+  # the patient stays put.
+  k_star <- which.min(counterfactual_loss)
+  if (!(counterfactual_loss[k_star] < loss)) {
+    k_star <- x_i
+  }
+  list(
+    index = i,
+    level = k_star,
+    terms = counterfactual_terms[, k_star],
+    loss = unname(counterfactual_loss[k_star])
+  )
+}
+
+#' @title Check whether a swap is possible
+#' @noRd
+#' @return `TRUE` if some pair of patients \eqn{(i, j)} has
+#'   \eqn{x_i \ne x_j}, `FALSE` otherwise.
+#' @inheritParams optimize_flip
+#' @examples
+#'   optimize_swap_possible(c(1L, 2L, 1L))
+#'   optimize_swap_possible(c(2L, 2L, 2L))
+optimize_swap_possible <- function(x) {
+  any(x != x[1L])
+}
+
+#' @title Swap step
+#' @noRd
+#' @description Implements the swap step in the "Moves" section of
+#'   `vignette("optimization", package = "retrogroup")`. The step reads
+#'   the current state of the search and returns the move without
+#'   modifying `x`. Requires `optimize_swap_possible(x)`.
+#' @return A move: a list with elements
+#'   * `index`: integer vector of length 2, the patients \eqn{(i, j)}
+#'     drawn in step 1.
+#'   * `level`: integer vector of length 2, the levels of patients
+#'     \eqn{i} and \eqn{j} after step 3: \eqn{(x_j, x_i)} if the swap is
+#'     accepted and \eqn{(x_i, x_j)} otherwise.
+#'   * `terms`: numeric vector, the loss terms of the assignments after
+#'     step 3.
+#'   * `loss`: numeric scalar, the loss \eqn{\Delta} after step 3, never
+#'     greater than `loss`.
+#'
+#'   Apply the move with `x[move$index] <- move$level`.
+#' @inheritParams optimize_flip
+#' @examples
+#'   patient <- group_data_patient(
+#'     group_example_patient(),
+#'     arm = "arm",
+#'     treatment = "Lev+5FU",
+#'     time = "time",
+#'     event = "event"
+#'   )
+#'   summary <- group_example_summary()
+#'   sex <- summary[summary$variable == "sex", ]
+#'   problem <- optimize_problem(
+#'     z = patient$treatment,
+#'     t = patient$time,
+#'     d = patient$event,
+#'     hazard_ratio = sex$hazard_ratio,
+#'     patients = sex$patients,
+#'     events = sex$events
+#'   )
+#'   x <- sample.int(2L, nrow(patient), replace = TRUE)
+#'   terms <- optimize_loss_terms(x, problem)
+#'   move <- optimize_swap(x, terms, sqrt(sum(terms)), problem)
+#'   x[move$index] <- move$level
+optimize_swap <- function(x, terms, loss, problem) {
+  K <- length(terms)
+  # Step 1: draw a pair of patients (i, j) uniformly at random from the
+  # pairs with x_i != x_j. The number of pairs with x_i = k and x_j = l is
+  # n_k * n_l, where n_k is the current number of patients in level k.
+  # First draw the pair of levels (x_i, x_j) with probability proportional
+  # to n_k * n_l, then draw i and j uniformly from the patients in those
+  # levels. Each unordered pair of distinct levels k < l is one row of
+  # level_pairs.
+  n <- tabulate(x, nbins = K)
+  level_pairs <- which(upper.tri(diag(K)), arr.ind = TRUE)
+  weights <- n[level_pairs[, 1L]] * n[level_pairs[, 2L]]
+  pair <- level_pairs[sample.int(nrow(level_pairs), 1L, prob = weights), ]
+  x_i <- pair[[1L]]
+  x_j <- pair[[2L]]
+  patients_i <- which(x == x_i)
+  patients_j <- which(x == x_j)
+  i <- patients_i[sample.int(length(patients_i), 1L)]
+  j <- patients_j[sample.int(length(patients_j), 1L)]
+  # Step 2: compute the loss Delta(x^(i <-> j)) of the swap. A swap changes
+  # the patients in levels x_i and x_j only, so every other loss term
+  # carries over from x. The step needs two model fits: one for level x_i
+  # with j in place of i, and one for level x_j with i in place of j.
+  members_i <- x == x_i
+  members_i[c(i, j)] <- c(FALSE, TRUE)
+  members_j <- x == x_j
+  members_j[c(i, j)] <- c(TRUE, FALSE)
+  swapped_terms <- terms
+  swapped_terms[x_i] <- optimize_level_term(members_i, x_i, problem)
+  swapped_terms[x_j] <- optimize_level_term(members_j, x_j, problem)
+  swapped_loss <- sqrt(sum(swapped_terms))
+  # Step 3: update x <- x^(i <-> j) if the swap reduces the loss, and
+  # otherwise leave x unchanged, so the loss never increases.
+  if (swapped_loss < loss) {
+    list(index = c(i, j), level = c(x_j, x_i), terms = swapped_terms, loss = swapped_loss)
+  } else {
+    list(index = c(i, j), level = c(x_i, x_j), terms = terms, loss = loss)
+  }
+}
+
 
 #' @title Validate the arguments of the optimization functions
 #' @noRd

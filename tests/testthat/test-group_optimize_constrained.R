@@ -131,11 +131,9 @@ test_that("optimize_constrained_variable() never increases the loss", {
     patients = c(1L, 2L, 3L),
     events = c(1L, 1L, 2L)
   )
+  problem <- do.call(retrogroup:::optimize_problem, args)
   loss <- function(index) {
-    sqrt(sum(do.call(
-      retrogroup:::optimize_loss_terms,
-      c(list(x = index), args)
-    )))
+    sqrt(sum(retrogroup:::optimize_loss_terms(index, problem)))
   }
   before <- loss(index)
   for (iterations in c(1L, 5L, 20L)) {

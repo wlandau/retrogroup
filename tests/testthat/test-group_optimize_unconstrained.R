@@ -111,6 +111,9 @@ test_that("optimize_loss_term() adds hazard ratio and event fraction terms", {
   expect_equal(term(log(1.5), 3L, 1.2), 0.13)
   expect_equal(term(0, 5L, 1), 0)
   expect_identical(term(NA_real_, 5L, 1.2), Inf)
+  # The event fractions divide by the assumed number of patients.
+  expect_equal(term(0, 4L, 1, patients = 8L, events = 4L), 0)
+  expect_equal(term(0, 7L, 1, patients = 10L, events = 4L), 0.09)
 })
 
 test_that("optimize_loss_terms() matches the reference loss", {
@@ -122,12 +125,14 @@ test_that("optimize_loss_terms() matches the reference loss", {
     rows <- summary$variable == variable
     terms <- retrogroup:::optimize_loss_terms(
       x = match(as.character(sample[[variable]]), summary$level[rows]),
-      z = sample$treatment,
-      t = sample$time,
-      d = sample$event,
-      hazard_ratio = summary$hazard_ratio[rows],
-      patients = summary$patients[rows],
-      events = summary$events[rows]
+      problem = retrogroup:::optimize_problem(
+        z = sample$treatment,
+        t = sample$time,
+        d = sample$event,
+        hazard_ratio = summary$hazard_ratio[rows],
+        patients = summary$patients[rows],
+        events = summary$events[rows]
+      )
     )
     expect_equal(
       sqrt(sum(terms)),
@@ -150,11 +155,9 @@ test_that("optimize_unconstrained_variable() never increases the loss", {
     patients = c(3L, 3L),
     events = c(1L, 3L)
   )
+  problem <- do.call(retrogroup:::optimize_problem, args)
   loss <- function(index) {
-    sqrt(sum(do.call(
-      retrogroup:::optimize_loss_terms,
-      c(list(x = index), args)
-    )))
+    sqrt(sum(retrogroup:::optimize_loss_terms(index, problem)))
   }
   before <- loss(index)
   for (iterations in c(1L, 5L, 20L)) {
@@ -169,6 +172,70 @@ test_that("optimize_unconstrained_variable() never increases the loss", {
     after <- loss(result$x)
     expect_identical(result$loss, after)
     expect_false(isTRUE(after > before))
+  }
+})
+
+test_that("optimize_unconstrained_variable() takes both flips and swaps", {
+  data <- probability_example()
+  patient <- data$patient
+  summary <- data$summary[data$summary$variable == "node4", ]
+  set.seed(0)
+  y <- as.integer(group_sample_unconstrained(patient, summary)$node4)
+  changes <- integer(0L)
+  for (iteration in seq_len(60L)) {
+    result <- retrogroup:::optimize_unconstrained_variable(
+      x = y,
+      z = patient$treatment,
+      t = patient$time,
+      d = patient$event,
+      hazard_ratio = summary$hazard_ratio,
+      patients = summary$patients,
+      events = summary$events,
+      iterations = 1L,
+      tolerance = 0
+    )
+    changed <- which(result$x != y)
+    expect_true(length(changed) %in% c(0L, 1L, 2L))
+    if (length(changed) == 2L) {
+      expect_identical(tabulate(result$x, 2L), tabulate(y, 2L))
+    }
+    changes <- c(changes, length(changed))
+    y <- result$x
+  }
+  expect_true(1L %in% changes)
+  expect_true(2L %in% changes)
+})
+
+test_that("optimize_unconstrained_variable() flips when no swap is possible", {
+  data <- probability_small()
+  patient <- data$patient
+  x <- rep(1L, nrow(patient))
+  set.seed(0)
+  result <- retrogroup:::optimize_unconstrained_variable(
+    x = x,
+    z = patient$treatment,
+    t = patient$time,
+    d = patient$event,
+    hazard_ratio = 1,
+    patients = nrow(patient),
+    events = sum(patient$event),
+    iterations = 10L,
+    tolerance = 0
+  )
+  expect_identical(result$x, x)
+  expect_true(is.finite(result$loss))
+})
+
+test_that("group_optimize_unconstrained() reaches the default tolerance", {
+  data <- probability_example()
+  summary <- data$summary[data$summary$variable == "node4", ]
+  for (seed in seq_len(3L)) {
+    set.seed(seed)
+    sample <- group_sample_unconstrained(data$patient, summary)
+    expect_no_warning(
+      optimized <- group_optimize_unconstrained(sample, summary)
+    )
+    expect_lt(optimize_loss_reference(optimized, summary, "node4"), 1e-3)
   }
 })
 
