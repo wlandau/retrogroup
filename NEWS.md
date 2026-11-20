@@ -7,6 +7,8 @@
   `group_example_summary()` also reports the bounds `lower` and `upper` of the 95% confidence interval of each hazard ratio.
 * The optimization loss is now the Euclidean distance between the observed and assumed hazard ratios on the linear scale, without standard errors.
   `tolerance` is on the linear scale of the hazard ratio.
+* The default `iterations` of `group_optimize_constrained()` and `group_optimize_unconstrained()` is now 10000 instead of 1000.
+  Iterations are cheap, and 1000 was often too few for the colon cancer example to converge.
 * `group_sample_constrained()` and `group_optimize_constrained()` preserve the number of events in each subgroup level as well as the number of patients.
 
 ## New features

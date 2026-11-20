@@ -12,3 +12,6 @@ README.html
 inst/app/about.html
 docs
 inst/doc
+
+/.quarto/
+**/*.quarto_ipynb

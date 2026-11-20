@@ -7,7 +7,7 @@
 group_optimize_constrained(
   patient,
   summary,
-  iterations = 1000L,
+  iterations = 10000L,
   tolerance = 0.001
 )
 }

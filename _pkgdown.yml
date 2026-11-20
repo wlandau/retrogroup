@@ -24,7 +24,7 @@ articles:
   contents:
   - benchmarks_sampling
   - benchmarks_optimization
-  - prognostic
+  # - prognostic  # Re-enable after rendering vignettes/prognostic.Rmd.source.
 - title: Appendix
   contents:
   - events

@@ -112,7 +112,7 @@
 group_optimize_unconstrained <- function(
   patient,
   summary,
-  iterations = 1000L,
+  iterations = 10000L,
   tolerance = 1e-3
 ) {
   assert_optimize_arguments(patient, summary, iterations, tolerance)
