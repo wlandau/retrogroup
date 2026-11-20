@@ -38,7 +38,7 @@ The vignettes explain the method and check its performance:
 
 ## Usage
 
-A typical workflow has four steps: gather the patient-level data and the published subgroup statistics, convert them to the standard format of `retrogroup`, sample subgroup membership for each patient, and optionally optimize the sampled subgroups to match the published statistics.
+A typical workflow has four steps: gather the patient-level data and the published subgroup statistics, convert them to the standard format of `retrogroup`, sample subgroup membership for each patient, and optionally optimize the sampled subgroups to match the assumed statistics.
 
 ### Example data
 
@@ -175,8 +175,8 @@ sample
 #> # ℹ 609 more rows
 ```
 
-Each sampled dataset is one random draw, so its subgroup hazard ratios differ somewhat from the published ones.
-Across many draws, however, they match the published hazard ratios on average.
+Each sampled dataset is one random draw, so its subgroup hazard ratios differ somewhat from the assumed ones.
+Across many draws, however, they match the assumed hazard ratios on average.
 The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
 
 The model has no prognostic effect, so unconstrained sampled subgroup levels are not (on average) associated with the disease’s natural history, and they should not be used for covariate adjustment.
@@ -185,7 +185,7 @@ However, it does not reproduce the timing of events within the subgroup levels o
 
 ### Optimization
 
-Optimization refines a single sampled dataset so that its subgroup hazard ratios match the published ones.
+Optimization refines a single sampled dataset so that its subgroup hazard ratios match the assumed ones.
 `group_optimize_unconstrained()` starts from the output of `group_sample_unconstrained()` and moves one patient at a time to the subgroup level that best reduces the discrepancy.
 `group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients with the same event status, so the numbers of patients and events in each subgroup level never change.
 
@@ -209,7 +209,7 @@ group_analysis_summary(optimized)
 #> 6 sex      male            307    139        0.520
 ```
 
-The optimized dataset matches the published patient counts, event counts and hazard ratios in `summary`.
+The optimized dataset matches the assumed patient counts, event counts and hazard ratios in `summary`.
 
 ``` r
 summary

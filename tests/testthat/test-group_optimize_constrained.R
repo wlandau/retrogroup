@@ -22,7 +22,7 @@ test_that("group_optimize_constrained() has the expected structure", {
   }
 })
 
-test_that("group_optimize_constrained() preserves the published counts", {
+test_that("group_optimize_constrained() preserves the assumed counts", {
   data <- probability_example()
   for (seed in seq_len(20L)) {
     set.seed(seed)

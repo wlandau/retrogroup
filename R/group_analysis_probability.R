@@ -3,7 +3,7 @@
 #' @family analysis
 #' @description Estimate the posterior probability that each patient
 #'   belongs to each level of each subgroup variable, given the
-#'   patient-level survival data and the published subgroup statistics.
+#'   patient-level survival data and the assumed subgroup statistics.
 #' @details `group_analysis_probability()` computes the estimated posterior
 #'   probabilities \eqn{p_{ik}} defined in the "Computation" section of
 #'   `vignette("model", package = "retrogroup")`, separately for each
@@ -365,8 +365,8 @@ assert_probability_positive <- function(p, variable) {
           "."
         ),
         i = paste(
-          "This usually comes from an extreme published log hazard ratio",
-          "or a very small published number of patients in a level."
+          "This usually comes from an extreme assumed hazard ratio or a",
+          "very small assumed number of patients in a level."
         )
       )
     )

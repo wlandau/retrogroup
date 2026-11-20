@@ -38,8 +38,8 @@ All the requirements of \code{\link[=group_analysis_probability]{group_analysis_
 may have the same name as a column of \code{patient}.
 
 The sampled number of patients in each subgroup level is not
-guaranteed to equal the published number of patients in \code{summary}.
-Use \code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the published counts.
+guaranteed to equal the assumed number of patients in \code{summary}.
+Use \code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the assumed counts.
 
 Sampling uses R's random number generator. Call \code{\link[=set.seed]{set.seed()}}
 beforehand for reproducible results.

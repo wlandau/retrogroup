@@ -30,7 +30,7 @@ column names are exactly the levels, in the same order as in
 \description{
 Estimate the posterior probability that each patient
 belongs to each level of each subgroup variable, given the
-patient-level survival data and the published subgroup statistics.
+patient-level survival data and the assumed subgroup statistics.
 }
 \details{
 \code{group_analysis_probability()} computes the estimated posterior

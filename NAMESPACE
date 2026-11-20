@@ -15,10 +15,6 @@ importFrom(rlang,
   abort,
   warn
 )
-importFrom(stats,
-  coef,
-  vcov
-)
 importFrom(survival,
   Surv,
   coxph,

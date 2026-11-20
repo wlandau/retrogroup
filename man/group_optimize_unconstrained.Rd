@@ -41,7 +41,7 @@ levels whose levels are those of the subgroup variable in
 }
 \description{
 Refine sampled subgroup levels so that the subgroup
-statistics observed in the data match the published subgroup
+statistics observed in the data match the assumed subgroup
 statistics in \code{summary}. Patient counts are not preserved.
 }
 \details{
@@ -71,9 +71,9 @@ final losses.
 
 The search is greedy, so it may settle in a local minimum. The number
 of patients in each subgroup level is not guaranteed to equal the
-published number of patients in \code{summary}. Use
+assumed number of patients in \code{summary}. Use
 \code{\link[=group_optimize_constrained]{group_optimize_constrained()}} on the output of
-\code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the published counts.
+\code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the assumed counts.
 
 In addition to the requirements of \code{\link[=group_analysis_probability]{group_analysis_probability()}}, \code{patient}
 must have one column per subgroup variable in \code{summary}, named after

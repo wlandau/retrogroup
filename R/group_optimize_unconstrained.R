@@ -2,7 +2,7 @@
 #' @export
 #' @family optimization
 #' @description Refine sampled subgroup levels so that the subgroup
-#'   statistics observed in the data match the published subgroup
+#'   statistics observed in the data match the assumed subgroup
 #'   statistics in `summary`. Patient counts are not preserved.
 #' @details `group_optimize_unconstrained()` implements the
 #'   "Optimization for unconstrained sampling" section of
@@ -30,9 +30,9 @@
 #'
 #'   The search is greedy, so it may settle in a local minimum. The number
 #'   of patients in each subgroup level is not guaranteed to equal the
-#'   published number of patients in `summary`. Use
+#'   assumed number of patients in `summary`. Use
 #'   [group_optimize_constrained()] on the output of
-#'   [group_sample_constrained()] to preserve the published counts.
+#'   [group_sample_constrained()] to preserve the assumed counts.
 #'
 #'   In addition to the requirements of [group_analysis_probability()], `patient`
 #'   must have one column per subgroup variable in `summary`, named after

@@ -43,7 +43,7 @@ number of events in each level equal \code{summary$patients} and
 }
 \description{
 Refine sampled subgroup levels so that the subgroup
-statistics observed in the data match the published subgroup
+statistics observed in the data match the assumed subgroup
 statistics in \code{summary}, while preserving the assumed number of
 patients and number of events in each subgroup level.
 }

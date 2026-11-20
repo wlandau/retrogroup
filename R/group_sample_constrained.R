@@ -95,7 +95,7 @@ group_sample_constrained <- function(patient, summary) {
 #'   assumed number of patients in each level. Must sum to `nrow(p)`.
 #' @param e Integer vector with one element per column of `p`: the
 #'   assumed number of events in each level. Must satisfy
-#'   `0 <= e <= n` and sum to `sum(d)`.
+#'   `1 <= e <= n` and sum to `sum(d)`.
 #' @param d Integer vector with one element per row of `p`: the event
 #'   indicator (0 or 1) of each patient.
 #' @examples

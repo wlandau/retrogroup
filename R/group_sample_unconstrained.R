@@ -15,8 +15,8 @@
 #'   may have the same name as a column of `patient`.
 #'
 #'   The sampled number of patients in each subgroup level is not
-#'   guaranteed to equal the published number of patients in `summary`.
-#'   Use [group_sample_constrained()] to preserve the published counts.
+#'   guaranteed to equal the assumed number of patients in `summary`.
+#'   Use [group_sample_constrained()] to preserve the assumed counts.
 #'
 #'   Sampling uses R's random number generator. Call [set.seed()]
 #'   beforehand for reproducible results.
