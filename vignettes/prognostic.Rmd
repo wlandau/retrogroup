@@ -29,7 +29,7 @@ library(ggplot2)
 <details><summary>Show code</summary>
 
 ``` r
-reps <- 100L         # Replications per method. Full scale: 1000L.
+reps <- 1000L         # Replications per method. Full scale: 1000L.
 iterations <- 10000L  # Maximum iterations per subgroup variable. Full scale: 10000L.
 tolerance <- 1e-3     # Stop when the loss falls below this value. Full scale: 1e-3.
 ```
@@ -421,7 +421,7 @@ The true prognostic hazard ratios are:
 
 
 
-We run 100 replications of each method.
+We run 1000 replications of each method.
 
 
 ``` r
@@ -441,18 +441,18 @@ The table compares the true prognostic hazard ratio of each subgroup level with 
 
 |Subgroup                    |Method        |Stage     | True HR| Mean HR|    Mean 95% CI| Coverage|
 |:---------------------------|:-------------|:---------|-------:|-------:|--------------:|--------:|
-|age: 60 or over vs under 60 |Unconstrained |Sampled   |   1.285|   0.989| (0.729, 1.342)|    0.560|
-|age: 60 or over vs under 60 |Unconstrained |Optimized |   1.285|   1.195| (0.879, 1.626)|    0.990|
-|age: 60 or over vs under 60 |Constrained   |Sampled   |   1.285|   1.003| (0.740, 1.360)|    0.650|
-|age: 60 or over vs under 60 |Constrained   |Optimized |   1.285|   1.235| (0.908, 1.680)|    1.000|
-|node4: yes vs no            |Unconstrained |Sampled   |   2.459|   1.018| (0.724, 1.434)|    0.000|
-|node4: yes vs no            |Unconstrained |Optimized |   2.459|   1.527| (1.118, 2.085)|    0.060|
-|node4: yes vs no            |Constrained   |Sampled   |   2.459|   1.015| (0.721, 1.430)|    0.000|
-|node4: yes vs no            |Constrained   |Optimized |   2.459|   2.117| (1.549, 2.893)|    1.000|
-|sex: male vs female         |Unconstrained |Sampled   |   1.076|   1.006| (0.743, 1.362)|    0.920|
-|sex: male vs female         |Unconstrained |Optimized |   1.076|   1.079| (0.797, 1.462)|    0.990|
-|sex: male vs female         |Constrained   |Sampled   |   1.076|   1.018| (0.752, 1.379)|    0.910|
-|sex: male vs female         |Constrained   |Optimized |   1.076|   1.092| (0.806, 1.479)|    1.000|
+|age: 60 or over vs under 60 |Unconstrained |Sampled   |   1.285|   1.010| (0.745, 1.371)|    0.642|
+|age: 60 or over vs under 60 |Unconstrained |Optimized |   1.285|   1.189| (0.874, 1.617)|    0.990|
+|age: 60 or over vs under 60 |Constrained   |Sampled   |   1.285|   1.006| (0.741, 1.364)|    0.628|
+|age: 60 or over vs under 60 |Constrained   |Optimized |   1.285|   1.229| (0.903, 1.672)|    1.000|
+|node4: yes vs no            |Unconstrained |Sampled   |   2.459|   1.004| (0.713, 1.415)|    0.000|
+|node4: yes vs no            |Unconstrained |Optimized |   2.459|   1.514| (1.108, 2.067)|    0.043|
+|node4: yes vs no            |Constrained   |Sampled   |   2.459|   1.018| (0.724, 1.432)|    0.001|
+|node4: yes vs no            |Constrained   |Optimized |   2.459|   2.114| (1.547, 2.889)|    1.000|
+|sex: male vs female         |Unconstrained |Sampled   |   1.076|   1.010| (0.745, 1.368)|    0.924|
+|sex: male vs female         |Unconstrained |Optimized |   1.076|   1.077| (0.795, 1.458)|    0.998|
+|sex: male vs female         |Constrained   |Sampled   |   1.076|   1.012| (0.748, 1.371)|    0.930|
+|sex: male vs female         |Constrained   |Optimized |   1.076|   1.093| (0.807, 1.480)|    1.000|
 
 
 
@@ -476,7 +476,7 @@ The table reports the fraction of optimization runs that warned that the loss di
 
 |Method        | Runs| Fraction warned|
 |:-------------|----:|---------------:|
-|Unconstrained |  100|           0.000|
-|Constrained   |  100|           0.000|
+|Unconstrained | 1000|           0.000|
+|Constrained   | 1000|           0.000|
 
 
