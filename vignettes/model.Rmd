@@ -19,7 +19,6 @@ knitr::opts_chunk$set(
 library(retrogroup)
 ```
 
-
 This vignette builds on `vignette("framing", package = "retrogroup")` and defines a Bayesian survival model to guide the reconstruction.
 Our goal is to construct the posterior probability of a patient belonging to a particular subgroup level given the observed survival data and treatment assignment.
 `vignette("sampling", package = "retrogroup")` uses estimates of these posterior probabilities to sample subgroup assignments for each patient.
@@ -27,14 +26,15 @@ We begin by defining the hazard rate for a proportional hazards model, then writ
 
 ## Disclaimer
 
-The model has no prognostic effect, so the posterior probabilities governing subgroup assignments are not alone sufficient to produce subgroup variables fit for covariate adjustment. Constrained sampling and its optimization^[See `vignette("sampling", package = "retrogroup")` and `vignette("optimization", package = "retrogroup")`.] recover prognostic information by preserving the event counts within each subgroup.
+The model has no prognostic effect, so the posterior probabilities governing subgroup assignments are not alone sufficient to produce subgroup variables fit for covariate adjustment.
+Constrained sampling and its optimization^[See `vignette("sampling", package = "retrogroup")` and `vignette("optimization", package = "retrogroup")`.] recover prognostic information by preserving the event counts within each subgroup.
 
 ## Hazard rate
 
 Along with the notation in `vignette("framing", package = "retrogroup")`, define:
 
-* $x_i$: the unknown subgroup level of patient $i$, a value in $1, \ldots, K$.
-  `retrogroup` seeks values of $x_1, \ldots, x_n$ that are consistent with the assumed known subgroup statistics from `vignette("framing", package = "retrogroup")`.
+* $x_i$: the unknown subgroup level of patient $i$, a value in $\{1, \ldots, K\}$.
+  `retrogroup` seeks values of $x_1, \ldots, x_n$ that are consistent with the assumed subgroup statistics from `vignette("framing", package = "retrogroup")`.
 * $t$ and $z$: generic time and treatment indicator (1 for treatment, 0 for control), respectively.
 * $\lambda_0(t)$: the baseline hazard rate at time $t$, i.e. the hazard rate of a control patient ($z = 0$), which is the same for every subgroup level $k$.
 
@@ -88,7 +88,7 @@ $$
 P(x_i = k \mid t_i, d_i, z_i) = \frac{\pi_k L(k \mid t_i, d_i, z_i)}{\sum_{l=1}^K \pi_l L(l \mid t_i, d_i, z_i)}
 $$
 
-For the prior of subgroup level $k$, we use the assumed fraction of patients belonging to each subgroup level:
+For the prior probability of subgroup level $k$, we use the assumed fraction of patients in that level:
 
 $$
 \pi_k := \frac{n_k}{n}
@@ -145,7 +145,7 @@ Every $p_{ik}$ is strictly positive: because $n_k > 0$, each $w_{ik}$ is finite,
 In floating point arithmetic, a positive $p_{ik}$ can still be numerically indistinguishable from zero, so `retrogroup` throws an error if any $p_{ik}$ is less than the square root of machine epsilon.
 
 Each $p_{ik}$ is available in closed form.
-Its only inputs are the survival data and the assumed subgroup statistics from `vignette("framing", package = "retrogroup")`, and computing it requires no iteration or model fitting.
+Its only inputs are the survival data and the assumed values of $n_k$ and $\beta_k$ from `vignette("framing", package = "retrogroup")`, and computing it requires no iteration or model fitting.
 These $p_{ik}$ values are what `vignette("sampling", package = "retrogroup")` uses to sample subgroup assignments.
 
 ## References
