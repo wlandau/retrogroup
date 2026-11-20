@@ -2,7 +2,7 @@
 % Please edit documentation in R/group_analysis_summary.R
 \name{group_analysis_summary}
 \alias{group_analysis_summary}
-\title{Subgroup-level hazard ratios}
+\title{Subgroup-level statistics}
 \usage{
 group_analysis_summary(
   patient,
@@ -22,37 +22,50 @@ no missing values. Defaults to every column of \code{patient} other than
 \code{treatment}, \code{time}, and \code{event}.}
 }
 \value{
-A tibble in the format of the output of \code{\link[=group_data_summary]{group_data_summary()}},
-with one row per subgroup level, ordered by subgroup variable as in
-\code{variables} and then by level, and the following columns:
+A tibble with one row per subgroup level, ordered by subgroup
+variable as in \code{variables} and then by level, and the following
+columns:
 \itemize{
 \item \code{variable}: character, name of the subgroup variable.
 \item \code{level}: character, level of the subgroup variable.
 \item \code{patients}: integer, number of patients in the subgroup level.
-\item \code{log_hazard_ratio}: numeric, estimated log hazard ratio of treatment
+\item \code{events}: integer, number of events in the subgroup level.
+\item \code{hazard_ratio}: numeric, estimated hazard ratio of treatment
 versus control in the subgroup level.
+\item \code{log_hazard_ratio}: numeric, estimated log hazard ratio of treatment
+versus control in the subgroup level. Legacy column, to be removed
+in a future version.
 \item \code{standard_error}: numeric, standard error of the log hazard ratio.
+Legacy column, to be removed in a future version.
 }
 }
 \description{
-Compute the number of patients, the log hazard ratio, and
-its standard error in each level of each subgroup variable of a
-patient-level dataset.
+Compute the number of patients, the number of events, and
+the hazard ratio of treatment versus control in each level of each
+subgroup variable of a patient-level dataset.
 }
 \details{
 For each level of each subgroup variable,
-\code{group_analysis_summary()} fits a Cox proportional hazards model by
-partial likelihood to the patients in that level, with treatment as
+\code{group_analysis_summary()} counts the patients and events in that
+level. These are the quantities \eqn{n_k} and \eqn{e_k} of
+\code{vignette("framing", package = "retrogroup")}, computed from the
+subgroup assignments in \code{patient} instead of assumed. Unlike the
+assumed \eqn{e_k}, the number of events of a level can be 0.
+
+\code{group_analysis_summary()} also fits a Cox proportional hazards model
+by partial likelihood to the patients in each level, with treatment as
 the only covariate and the Efron method for ties, as in
-\code{\link[survival:coxph]{survival::coxph()}}. The log hazard ratio is the estimated coefficient
-of treatment versus control, and the standard error is on the log
-hazard ratio scale. These are the observed statistics
-\eqn{\hat\beta_k(x)} and \eqn{\hat\sigma_k(x)} of the "Loss function"
-section of \code{vignette("optimization", package = "retrogroup")}.
+\code{\link[survival:coxph]{survival::coxph()}}. The hazard ratio is the exponential of the
+estimated coefficient of treatment versus control, the estimate of
+\eqn{\exp(\beta_k)} of \code{vignette("framing", package = "retrogroup")}.
+The log hazard ratio is the observed statistic \eqn{\hat\beta_k(x)} of
+the "Loss function" section of
+\code{vignette("optimization", package = "retrogroup")}.
 
 If the model cannot be fit for some subgroup level, for example
 because one of its arms has no patients or no events, the
-\code{log_hazard_ratio} and \code{standard_error} of that level are \code{NA}.
+\code{hazard_ratio}, \code{log_hazard_ratio}, and \code{standard_error} of that level
+are \code{NA}.
 
 The levels of a factor subgroup column are its factor levels, in
 order, excluding levels with no patients. The levels of a character

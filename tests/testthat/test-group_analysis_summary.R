@@ -13,17 +13,27 @@ analysis_colon <- function() {
   )
 }
 
-test_that("group_analysis_summary() has the format of group_data_summary()", {
+test_that("group_analysis_summary() has the expected format", {
   patient <- analysis_colon()
   x <- group_analysis_summary(patient)
   expect_s3_class(x, "tbl_df")
   expect_identical(
     colnames(x),
-    c("variable", "level", "patients", "log_hazard_ratio", "standard_error")
+    c(
+      "variable",
+      "level",
+      "patients",
+      "events",
+      "hazard_ratio",
+      "log_hazard_ratio",
+      "standard_error"
+    )
   )
   expect_type(x$variable, "character")
   expect_type(x$level, "character")
   expect_type(x$patients, "integer")
+  expect_type(x$events, "integer")
+  expect_type(x$hazard_ratio, "double")
   expect_type(x$log_hazard_ratio, "double")
   expect_type(x$standard_error, "double")
   expect_identical(
@@ -35,8 +45,15 @@ test_that("group_analysis_summary() has the format of group_data_summary()", {
       log_hazard_ratio = "log_hazard_ratio",
       standard_error = "standard_error"
     ),
-    x
+    x[, c(
+      "variable",
+      "level",
+      "patients",
+      "log_hazard_ratio",
+      "standard_error"
+    )]
   )
+  expect_equal(x$hazard_ratio, exp(x$log_hazard_ratio))
 })
 
 test_that("group_analysis_summary() orders variables and levels", {
@@ -63,6 +80,8 @@ test_that("group_analysis_summary() agrees with survival::coxph()", {
       data = subset
     )
     expect_identical(x$patients[row], nrow(subset))
+    expect_identical(x$events[row], sum(subset$event))
+    expect_equal(x$hazard_ratio[row], exp(unname(stats::coef(fit))))
     expect_equal(x$log_hazard_ratio[row], unname(stats::coef(fit)))
     expect_equal(x$standard_error[row], sqrt(stats::vcov(fit)[1L, 1L]))
   }
@@ -77,6 +96,12 @@ test_that("group_analysis_summary() counts constrained samples exactly", {
     a <- data$summary
     a$patients[order(a$variable, a$level)]
   })
+  for (row in seq_len(nrow(x))) {
+    members <- sample[[x$variable[row]]] == x$level[row]
+    expect_identical(x$events[row], sum(sample$event[members]))
+  }
+  totals <- tapply(x$events, x$variable, sum)
+  expect_true(all(totals == sum(sample$event)))
 })
 
 test_that("group_analysis_summary() gives NA when the model cannot be fit", {
@@ -89,9 +114,27 @@ test_that("group_analysis_summary() gives NA when the model cannot be fit", {
   x <- group_analysis_summary(patient)
   expect_identical(x$level, c("a", "b"))
   expect_identical(x$patients, c(4L, 2L))
+  expect_identical(x$events, c(3L, 2L))
+  expect_true(is.finite(x$hazard_ratio[1L]))
   expect_true(is.finite(x$log_hazard_ratio[1L]))
+  expect_true(is.na(x$hazard_ratio[2L]))
   expect_true(is.na(x$log_hazard_ratio[2L]))
   expect_true(is.na(x$standard_error[2L]))
+})
+
+test_that("group_analysis_summary() counts zero events in a level", {
+  patient <- tibble::tibble(
+    treatment = c(0L, 1L, 0L, 1L, 0L, 1L),
+    time = c(1, 2, 3, 4, 5, 6),
+    event = c(1L, 1L, 1L, 1L, 0L, 0L),
+    group = factor(c("a", "a", "a", "a", "b", "b"), levels = c("a", "b"))
+  )
+  x <- group_analysis_summary(patient)
+  expect_identical(x$level, c("a", "b"))
+  expect_identical(x$patients, c(4L, 2L))
+  expect_identical(x$events, c(4L, 0L))
+  expect_true(is.finite(x$hazard_ratio[1L]))
+  expect_true(is.na(x$hazard_ratio[2L]))
 })
 
 test_that("analysis_fit() agrees with survival::coxph()", {

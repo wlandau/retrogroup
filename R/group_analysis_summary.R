@@ -1,35 +1,48 @@
-#' @title Subgroup-level hazard ratios
+#' @title Subgroup-level statistics
 #' @export
 #' @family analysis
-#' @description Compute the number of patients, the log hazard ratio, and
-#'   its standard error in each level of each subgroup variable of a
-#'   patient-level dataset.
+#' @description Compute the number of patients, the number of events, and
+#'   the hazard ratio of treatment versus control in each level of each
+#'   subgroup variable of a patient-level dataset.
 #' @details For each level of each subgroup variable,
-#'   `group_analysis_summary()` fits a Cox proportional hazards model by
-#'   partial likelihood to the patients in that level, with treatment as
+#'   `group_analysis_summary()` counts the patients and events in that
+#'   level. These are the quantities \eqn{n_k} and \eqn{e_k} of
+#'   `vignette("framing", package = "retrogroup")`, computed from the
+#'   subgroup assignments in `patient` instead of assumed. Unlike the
+#'   assumed \eqn{e_k}, the number of events of a level can be 0.
+#'
+#'   `group_analysis_summary()` also fits a Cox proportional hazards model
+#'   by partial likelihood to the patients in each level, with treatment as
 #'   the only covariate and the Efron method for ties, as in
-#'   [survival::coxph()]. The log hazard ratio is the estimated coefficient
-#'   of treatment versus control, and the standard error is on the log
-#'   hazard ratio scale. These are the observed statistics
-#'   \eqn{\hat\beta_k(x)} and \eqn{\hat\sigma_k(x)} of the "Loss function"
-#'   section of `vignette("optimization", package = "retrogroup")`.
+#'   [survival::coxph()]. The hazard ratio is the exponential of the
+#'   estimated coefficient of treatment versus control, the estimate of
+#'   \eqn{\exp(\beta_k)} of `vignette("framing", package = "retrogroup")`.
+#'   The log hazard ratio is the observed statistic \eqn{\hat\beta_k(x)} of
+#'   the "Loss function" section of
+#'   `vignette("optimization", package = "retrogroup")`.
 #'
 #'   If the model cannot be fit for some subgroup level, for example
 #'   because one of its arms has no patients or no events, the
-#'   `log_hazard_ratio` and `standard_error` of that level are `NA`.
+#'   `hazard_ratio`, `log_hazard_ratio`, and `standard_error` of that level
+#'   are `NA`.
 #'
 #'   The levels of a factor subgroup column are its factor levels, in
 #'   order, excluding levels with no patients. The levels of a character
 #'   subgroup column are its sorted unique values.
-#' @return A tibble in the format of the output of [group_data_summary()],
-#'   with one row per subgroup level, ordered by subgroup variable as in
-#'   `variables` and then by level, and the following columns:
+#' @return A tibble with one row per subgroup level, ordered by subgroup
+#'   variable as in `variables` and then by level, and the following
+#'   columns:
 #'   * `variable`: character, name of the subgroup variable.
 #'   * `level`: character, level of the subgroup variable.
 #'   * `patients`: integer, number of patients in the subgroup level.
-#'   * `log_hazard_ratio`: numeric, estimated log hazard ratio of treatment
+#'   * `events`: integer, number of events in the subgroup level.
+#'   * `hazard_ratio`: numeric, estimated hazard ratio of treatment
 #'     versus control in the subgroup level.
+#'   * `log_hazard_ratio`: numeric, estimated log hazard ratio of treatment
+#'     versus control in the subgroup level. Legacy column, to be removed
+#'     in a future version.
 #'   * `standard_error`: numeric, standard error of the log hazard ratio.
+#'     Legacy column, to be removed in a future version.
 #' @param patient Patient-level survival data with subgroup columns,
 #'   usually the output of [group_sample_unconstrained()],
 #'   [group_sample_constrained()], [group_optimize_unconstrained()], or
@@ -77,20 +90,26 @@ group_analysis_summary <- function(
       levels,
       \(level) {
         members <- values == level
-        analysis_fit(
-          patient$treatment[members],
-          patient$time[members],
-          patient$event[members]
+        c(
+          sum(members),
+          sum(patient$event[members]),
+          analysis_fit(
+            patient$treatment[members],
+            patient$time[members],
+            patient$event[members]
+          )
         )
       },
-      numeric(2L)
+      numeric(4L)
     )
     tibble::tibble(
       variable = variable,
       level = levels,
-      patients = as.integer(table(factor(values, levels = levels))),
-      log_hazard_ratio = unname(fits[1L, ]),
-      standard_error = unname(fits[2L, ])
+      patients = as.integer(fits[1L, ]),
+      events = as.integer(fits[2L, ]),
+      hazard_ratio = exp(unname(fits[3L, ])),
+      log_hazard_ratio = unname(fits[3L, ]),
+      standard_error = unname(fits[4L, ])
     )
   })
   do.call(rbind, rows)

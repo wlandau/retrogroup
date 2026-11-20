@@ -12,9 +12,14 @@ A tibble with one row per subgroup level and the following columns:
 \item \code{variable}: character, name of the subgroup variable.
 \item \code{level}: character, level of the subgroup variable.
 \item \code{patients}: integer, number of patients in the subgroup level.
-\item \code{log_hazard_ratio}: numeric, estimated log hazard ratio of treatment
+\item \code{events}: integer, number of events in the subgroup level.
+\item \code{hazard_ratio}: numeric, estimated hazard ratio of treatment
 versus control in the subgroup level.
+\item \code{log_hazard_ratio}: numeric, estimated log hazard ratio of treatment
+versus control in the subgroup level. Legacy column, to be removed
+in a future version.
 \item \code{standard_error}: numeric, standard error of the log hazard ratio.
+Legacy column, to be removed in a future version.
 }
 }
 \description{
@@ -38,11 +43,12 @@ There are three subgroup variables:
 \item \code{"sex"}: with levels \code{"female"} and \code{"male"}.
 }
 
-Within each subgroup level, \code{\link[=group_analysis_summary]{group_analysis_summary()}} fits a Cox
-proportional hazards model of survival on treatment (\code{"Lev+5FU"}
-versus \code{"Obs"}) to get the log hazard ratio and its standard error.
-The standard error is on the log hazard ratio scale,
-not the hazard ratio scale.
+Within each subgroup level, \code{\link[=group_analysis_summary]{group_analysis_summary()}} counts the
+patients and events and fits a Cox proportional hazards model of
+survival on treatment (\code{"Lev+5FU"} versus \code{"Obs"}) to get the hazard
+ratio, the log hazard ratio, and the standard error of the log hazard
+ratio. The standard error is on
+the log hazard ratio scale, not the hazard ratio scale.
 }
 \examples{
   group_example_summary()

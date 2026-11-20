@@ -31,7 +31,7 @@ test_that("group_data_summary() reproduces the example data", {
     standard_error = "standard_error"
   )
   expect_s3_class(x, "tbl_df")
-  expect_identical(x, data)
+  expect_identical(x, data[, colnames(x)])
 })
 
 test_that("group_data_summary() has the expected structure", {
