@@ -22,10 +22,16 @@ group_optimize_constrained(
 iterations for each subgroup variable. Each iteration draws one pair
 of patients and fits two Cox models.}
 
-\item{tolerance}{Non-negative number. The search for each subgroup
+\item{tolerance}{Non-negative number on the linear (natural) scale of
+the hazard ratio, not the log scale. The search for each subgroup
 variable stops when the loss \eqn{\Delta(x)} falls below \code{tolerance}.
-The loss is on the hazard ratio scale, so the default of \code{1e-3} stops
-when the observed and assumed hazard ratios agree to roughly \code{1e-3}.}
+Because \eqn{\Delta(x)} is the Euclidean distance between the
+observed and assumed hazard ratios themselves, a loss below
+\code{tolerance} guarantees that the observed hazard ratio of every
+subgroup level is within \code{tolerance} of its assumed hazard ratio.
+The default of \code{1e-3} is much finer than the two decimal places
+hazard ratios are usually published with. Larger values such as
+\code{1e-2} give faster but coarser fits.}
 }
 \value{
 A tibble with the same rows and columns as \code{patient}, in the
@@ -58,10 +64,11 @@ Each iteration draws a pair of patients \eqn{(i, j)} uniformly at
 random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
 levels if the swap reduces the loss. Otherwise, the subgroup levels
 stay the same, so the loss never increases. The search for each
-subgroup variable stops when the loss falls below \code{tolerance} or after
-\code{iterations} iterations, whichever comes first. If the loss of any
-subgroup variable is still at least \code{tolerance} after \code{iterations}
-iterations, \code{group_optimize_constrained()} throws a warning of class
+subgroup variable stops when the loss falls below \code{tolerance} (on the
+linear hazard ratio scale) or after \code{iterations} iterations,
+whichever comes first. If the loss of any subgroup variable is still
+at least \code{tolerance} after \code{iterations} iterations,
+\code{group_optimize_constrained()} throws a warning of class
 \code{"retrogroup_warning"} that lists those subgroup variables and their
 final losses.
 

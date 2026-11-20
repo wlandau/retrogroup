@@ -207,9 +207,30 @@ test_that("warn_optimize_tolerance() only lists unconverged variables", {
   expect_match(message, "\"age\" = ", fixed = TRUE)
   expect_match(message, "\"node4\" = ", fixed = TRUE)
   expect_false(grepl("\"sex\"", message, fixed = TRUE))
+  expect_match(message, "linear hazard ratio scale", fixed = TRUE)
   expect_no_warning(
     retrogroup:::warn_optimize_tolerance(c(age = 1e-8), 10L, 1e-6)
   )
+})
+
+test_that("both optimizers default to tolerance = 1e-3", {
+  expect_identical(formals(group_optimize_unconstrained)$tolerance, 1e-3)
+  expect_identical(formals(group_optimize_constrained)$tolerance, 1e-3)
+})
+
+test_that("a loss below tolerance bounds every hazard ratio error", {
+  set.seed(0)
+  for (rep in seq_len(100L)) {
+    observed <- exp(rnorm(4L, sd = 0.5))
+    assumed <- exp(rnorm(4L, sd = 0.5))
+    terms <- vapply(
+      seq_along(observed),
+      \(k) retrogroup:::optimize_loss_term(log(observed[k]), assumed[k]),
+      numeric(1L)
+    )
+    loss <- sqrt(sum(terms))
+    expect_true(all(abs(observed - assumed) <= loss))
+  }
 })
 
 test_that("group_optimize_unconstrained() validates its arguments", {

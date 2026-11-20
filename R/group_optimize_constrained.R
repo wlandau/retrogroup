@@ -21,10 +21,11 @@
 #'   random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
 #'   levels if the swap reduces the loss. Otherwise, the subgroup levels
 #'   stay the same, so the loss never increases. The search for each
-#'   subgroup variable stops when the loss falls below `tolerance` or after
-#'   `iterations` iterations, whichever comes first. If the loss of any
-#'   subgroup variable is still at least `tolerance` after `iterations`
-#'   iterations, `group_optimize_constrained()` throws a warning of class
+#'   subgroup variable stops when the loss falls below `tolerance` (on the
+#'   linear hazard ratio scale) or after `iterations` iterations,
+#'   whichever comes first. If the loss of any subgroup variable is still
+#'   at least `tolerance` after `iterations` iterations,
+#'   `group_optimize_constrained()` throws a warning of class
 #'   `"retrogroup_warning"` that lists those subgroup variables and their
 #'   final losses.
 #'

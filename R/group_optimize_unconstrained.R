@@ -21,11 +21,12 @@
 #'   \eqn{\Delta(x^{(i \to k)})}. The patient stays put if the current
 #'   level ties for the minimum, so the loss never increases. The search
 #'   for each subgroup variable stops when the loss falls below `tolerance`
-#'   or after `iterations` iterations, whichever comes first. If the loss
-#'   of any subgroup variable is still at least `tolerance` after
-#'   `iterations` iterations, `group_optimize_unconstrained()` throws a
-#'   warning of class `"retrogroup_warning"` that lists those subgroup
-#'   variables and their final losses.
+#'   (on the linear hazard ratio scale) or after `iterations` iterations,
+#'   whichever comes first. If the loss of any subgroup variable is still
+#'   at least `tolerance` after `iterations` iterations,
+#'   `group_optimize_unconstrained()` throws a warning of class
+#'   `"retrogroup_warning"` that lists those subgroup variables and their
+#'   final losses.
 #'
 #'   The search is greedy, so it may settle in a local minimum. The number
 #'   of patients in each subgroup level is not guaranteed to equal the
@@ -51,10 +52,16 @@
 #' @param iterations Non-negative whole number, the maximum number of
 #'   iterations for each subgroup variable. Each iteration draws one
 #'   patient and fits one Cox model per subgroup level.
-#' @param tolerance Non-negative number. The search for each subgroup
+#' @param tolerance Non-negative number on the linear (natural) scale of
+#'   the hazard ratio, not the log scale. The search for each subgroup
 #'   variable stops when the loss \eqn{\Delta(x)} falls below `tolerance`.
-#'   The loss is on the hazard ratio scale, so the default of `1e-3` stops
-#'   when the observed and assumed hazard ratios agree to roughly `1e-3`.
+#'   Because \eqn{\Delta(x)} is the Euclidean distance between the
+#'   observed and assumed hazard ratios themselves, a loss below
+#'   `tolerance` guarantees that the observed hazard ratio of every
+#'   subgroup level is within `tolerance` of its assumed hazard ratio.
+#'   The default of `1e-3` is much finer than the two decimal places
+#'   hazard ratios are usually published with. Larger values such as
+#'   `1e-2` give faster but coarser fits.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -126,7 +133,7 @@ group_optimize_unconstrained <- function(
 #' @param d Integer vector, event indicator of each patient.
 #' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
 #' @param iterations Maximum number of iterations.
-#' @param tolerance Loss tolerance.
+#' @param tolerance Loss tolerance on the linear hazard ratio scale.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),

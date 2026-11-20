@@ -66,7 +66,7 @@ optimize_loss_terms <- function(x, z, t, d, hazard_ratio) {
 #' @param summary Summary subgroup statistics, the output of
 #'   [group_data_summary()].
 #' @param iterations Maximum number of iterations per subgroup variable.
-#' @param tolerance Loss tolerance.
+#' @param tolerance Loss tolerance on the linear hazard ratio scale.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -149,7 +149,7 @@ assert_optimize_arguments <- function(
 #' @param loss Named numeric vector with the final loss of each subgroup
 #'   variable.
 #' @param iterations Maximum number of iterations per subgroup variable.
-#' @param tolerance Loss tolerance.
+#' @param tolerance Loss tolerance on the linear hazard ratio scale.
 #' @examples
 #'   warn_optimize_tolerance(
 #'     loss = c(age = 1e-8, sex = 0.02),
@@ -182,6 +182,7 @@ warn_optimize_tolerance <- function(loss, iterations, tolerance) {
           "."
         ),
         i = paste(
+          "tolerance is on the linear hazard ratio scale.",
           "Increase iterations, rerun from freshly sampled subgroup levels,",
           "or increase tolerance."
         )

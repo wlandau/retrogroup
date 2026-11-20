@@ -88,6 +88,9 @@ A swap changes the patients in levels $x_i$ and $x_j$ only, so an iteration need
 ## Stopping
 
 Both methods stop when the loss falls below a tolerance or after a maximum number of iterations, whichever comes first.
+Because the loss is the Euclidean distance between hazard ratios on the linear scale, the tolerance is on the linear scale of the hazard ratio, not the log scale.
+Since $\left|\exp(\hat\beta_k(x)) - \exp(\beta_k)\right| \le \Delta(x)$ for every level $k$, a loss below the tolerance means that the observed hazard ratio of every subgroup level is within the tolerance of its assumed hazard ratio.
+The default tolerance of $10^{-3}$ is much finer than the two decimal places hazard ratios are usually published with.
 The loss is non-increasing and bounded below by zero, so it converges.
 The search is greedy, however, so it may settle in a local minimum where no single flip or swap improves the loss.
 In particular, if the starting loss is infinite and no single flip or swap makes every model estimable, the search cannot make progress.
