@@ -24,7 +24,7 @@ This vignette explains a method to sample subgroup levels $x_1, \ldots, x_n$ giv
 
 Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should approximately match the assumed hazard ratios on average, provided the patient-level data are consistent with the model.
 However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
-`vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and assumed subgroup hazard ratios match.
+`vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and assumed subgroup hazard ratios match and the observed event counts approach the assumed ones.
 
 ## Unconstrained sampling
 
@@ -73,7 +73,7 @@ This scheme guarantees the assumed counts, but it is only an approximate draw fr
 
 Constrained sampling preserves the sample sizes $n_k$ but does not target the event counts $e_k$.
 Like unconstrained sampling, it draws from a model with no prognostic effect, so its subgroups carry no prognostic information and should not be used for covariate adjustment.
-The loss function in `vignette("optimization", package = "retrogroup")` steers the observed event fraction of each subgroup level toward $e_k / n_k$, but only as a soft constraint, so the event counts are not guaranteed to match.
+The loss function in `vignette("optimization", package = "retrogroup")` steers the observed event count of each subgroup level toward $e_k$, but only as a soft constraint, so the event counts are not guaranteed to match.
 In addition, the timing of events within each subgroup level is not reproduced from the original data.
 We make no claims about the prognostic information of optimized subgroups, but `vignette("prognostic", package = "retrogroup")` examines it empirically.
 The statistician who uses a reconstructed dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.

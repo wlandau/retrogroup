@@ -28,8 +28,8 @@
 #'   no prognostic effect, so the sampled subgroups carry no prognostic
 #'   information and should not be used for covariate adjustment.
 #'   The loss functions of [group_optimize_constrained()]
-#'   and [group_optimize_unconstrained()] steer the event fractions toward
-#'   `summary$events / summary$patients`, but only as a soft constraint.
+#'   and [group_optimize_unconstrained()] steer the event counts toward
+#'   `summary$events`, but only as a soft constraint.
 #'   The statistician who uses the sampled data in an analysis is
 #'   responsible for the consequences.
 #'

@@ -184,17 +184,15 @@ The model has no prognostic effect, so subgroup levels from either sampler carry
 
 ### Optimization
 
-Optimization refines a single sampled dataset so that its subgroup hazard ratios match the assumed ones and its subgroup event fractions approach the assumed ones.
-`group_optimize_unconstrained()` starts from the output of `group_sample_unconstrained()` and moves one patient at a time to the subgroup level that best reduces the discrepancy.
-`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients, so the number of patients in each subgroup level never changes.
+Optimization refines a single sampled dataset so that its subgroup hazard ratios match the assumed ones and its subgroup event counts approach the assumed ones.
+Optimization proposes two kinds of moves: a flip moves one patient to the subgroup level that best reduces the discrepancy, and a swap exchanges the subgroup levels of two patients.
+`group_optimize_unconstrained()` starts from the output of `group_sample_unconstrained()` and mixes flips and swaps.
+`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and uses only swaps, so the number of patients in each subgroup level never changes.
 Both optimizers steer the number of events in each subgroup level toward `summary$events`, but only as a soft constraint, so the event counts are not guaranteed to match.
 
 ``` r
 set.seed(0)
 optimized <- group_optimize_constrained(sample, summary)
-#> Warning: The loss did not fall below tolerance = 0.001 within iterations = 1000 for 1 subgroup variable(s).
-#> ✖ Final loss by subgroup variable: "node4" = 0.00363.
-#> ℹ tolerance applies to the hazard ratios on the linear scale and to the event fractions. Increase iterations, rerun from freshly sampled subgroup levels, or increase tolerance.
 ```
 
 `group_analysis_summary()` computes the subgroup statistics of a patient-level dataset.
@@ -206,10 +204,10 @@ group_analysis_summary(optimized)
 #>   <chr>    <chr>         <int>  <int>        <dbl>
 #> 1 age      under 60        280    129        0.845
 #> 2 age      60 or over      339    162        0.580
-#> 3 node4    no              453    177        0.655
+#> 3 node4    no              453    177        0.658
 #> 4 node4    yes             166    114        0.731
 #> 5 sex      female          312    152        0.863
-#> 6 sex      male            307    139        0.520
+#> 6 sex      male            307    139        0.519
 ```
 
 The optimized dataset matches the assumed patient counts and hazard ratios in `summary`, and its event counts are close to the assumed ones.
@@ -227,7 +225,7 @@ summary
 #> 6 sex      male            307    139        0.519
 ```
 
-Optimization targets the hazard ratios of treatment versus control and, as a soft constraint, the event fractions.
+Optimization targets the hazard ratios of treatment versus control and, as a soft constraint, the event counts.
 It does not reproduce the timing of events within the subgroup levels of the original data.
 We make no claims about the prognostic information of optimized subgroups, but the [prognostic benchmarks](https://wlandau.github.io/retrogroup/articles/prognostic.html) examine it empirically.
 A reconstructed dataset is not the original data, and the statistician who uses it in an analysis, for example for covariate adjustment, is responsible for the consequences.

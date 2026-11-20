@@ -51,8 +51,8 @@ Sampling does not target the assumed event counts in
 no prognostic effect, so the sampled subgroups carry no prognostic
 information and should not be used for covariate adjustment.
 The loss functions of \code{\link[=group_optimize_constrained]{group_optimize_constrained()}}
-and \code{\link[=group_optimize_unconstrained]{group_optimize_unconstrained()}} steer the event fractions toward
-\code{summary$events / summary$patients}, but only as a soft constraint.
+and \code{\link[=group_optimize_unconstrained]{group_optimize_unconstrained()}} steer the event counts toward
+\code{summary$events}, but only as a soft constraint.
 The statistician who uses the sampled data in an analysis is
 responsible for the consequences.
 

@@ -315,7 +315,12 @@ optimize_swap <- function(x, terms, loss, problem) {
   # Step 3: update x <- x^(i <-> j) if the swap reduces the loss, and
   # otherwise leave x unchanged, so the loss never increases.
   if (swapped_loss < loss) {
-    list(index = c(i, j), level = c(x_j, x_i), terms = swapped_terms, loss = swapped_loss)
+    list(
+      index = c(i, j),
+      level = c(x_j, x_i),
+      terms = swapped_terms,
+      loss = swapped_loss
+    )
   } else {
     list(index = c(i, j), level = c(x_i, x_j), terms = terms, loss = loss)
   }

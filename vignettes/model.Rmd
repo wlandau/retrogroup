@@ -28,7 +28,7 @@ We begin by defining the hazard rate for a proportional hazards model, then writ
 
 The model has no prognostic effect, so the posterior probabilities governing subgroup assignments are not alone sufficient to produce subgroup variables fit for covariate adjustment.
 Subgroup levels sampled from these probabilities, with or without constraints on the patient counts^[See `vignette("sampling", package = "retrogroup")`.], carry no prognostic information.
-Optimization^[See `vignette("optimization", package = "retrogroup")`.] steers the event fraction of each subgroup level toward its assumed value, but only as a soft constraint, and it does not reproduce the timing of events within the subgroups of the original data.
+Optimization^[See `vignette("optimization", package = "retrogroup")`.] steers the event count of each subgroup level toward its assumed value, but only as a soft constraint, and it does not reproduce the timing of events within the subgroups of the original data.
 We make no claims about the prognostic information of optimized subgroups, but `vignette("prognostic", package = "retrogroup")` examines it empirically.
 
 ## Hazard rate

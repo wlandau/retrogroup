@@ -65,7 +65,7 @@ Rendered on `r format(Sys.Date())` with `retrogroup` `r format(packageVersion("r
 ## Purpose
 
 `vignette("sampling", package = "retrogroup")` claims that sampled subgroups carry no prognostic information, whether sampling is unconstrained or constrained.
-`vignette("optimization", package = "retrogroup")` makes no claims about the prognostic information of optimized subgroups, but its loss function steers the event fraction of each subgroup level toward its assumed value.
+`vignette("optimization", package = "retrogroup")` makes no claims about the prognostic information of optimized subgroups, but its loss function steers the event count of each subgroup level toward its assumed value.
 This vignette examines both questions by simulation.
 It asks how well the subgroups of sampled and optimized datasets recover the prognostic hazard ratios of the true subgroups.
 
@@ -105,7 +105,7 @@ We test two methods:
 ### What to expect
 
 The model in `vignette("model", package = "retrogroup")` has no prognostic effect, so sampled subgroups from either sampler should have prognostic hazard ratios near 1.
-Optimization steers the event fraction of each subgroup level toward its assumed value, which may move the prognostic hazard ratios of optimized subgroups toward the truth.
+Optimization steers the event count of each subgroup level toward its assumed value, which may move the prognostic hazard ratios of optimized subgroups toward the truth.
 However, optimization does not reproduce the timing of events within each level, so we make no prediction about how much, if any, prognostic information it recovers.
 
 Every optimization uses tolerance = `r format(tolerance)` and at most `r format(iterations)` iterations per subgroup variable.

@@ -22,7 +22,7 @@ library(retrogroup)
 `vignette("sampling", package = "retrogroup")` defines methods for sampling subgroup levels based on estimated posterior probabilities.
 Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should approximately match the assumed hazard ratios on average, provided the patient-level data are consistent with the model.
 However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
-This vignette defines methods to refine an individual simulated dataset so that the observed subgroup hazard ratios match the assumed hazard ratios.
+This vignette defines methods to refine an individual simulated dataset so that the observed subgroup hazard ratios match the assumed hazard ratios and the observed event counts approach the assumed event counts.
 
 We define two optimization methods: one for subgroup variables produced with unconstrained sampling, and another for those produced with constrained sampling.
 Both methods are the same greedy local search.
