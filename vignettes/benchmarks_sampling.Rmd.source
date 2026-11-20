@@ -55,7 +55,7 @@ library(ggplot2)
 ```
 
 ```{r settings, fold = TRUE}
-colon_reps <- 200L          # Full scale: 2000 sampled datasets per sampler.
+colon_reps <- 2000L          # Full scale: 2000 sampled datasets per sampler.
 simulated_datasets <- 50L    # Full scale: 50 simulated datasets.
 simulated_patients <- 10000L # Full scale: 10000 patients per simulated dataset.
 simulated_reps <- 200L       # Full scale: 200 sampled datasets per simulated dataset and sampler.

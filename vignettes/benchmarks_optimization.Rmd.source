@@ -55,7 +55,7 @@ library(ggplot2)
 ```
 
 ```{r settings, fold = TRUE}
-reps <- 100L         # Replications per method. Full scale: 1000L.
+reps <- 1000L         # Replications per method. Full scale: 1000L.
 iterations <- 10000L  # Maximum iterations per subgroup variable. Full scale: 10000L.
 tolerance <- 1e-3     # Stop when the loss falls below this value. Full scale: 1e-3.
 ```
