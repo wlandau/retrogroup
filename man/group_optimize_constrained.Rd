@@ -37,15 +37,15 @@ hazard ratios are usually published with. Larger values such as
 A tibble with the same rows and columns as \code{patient}, in the
 same order. Each subgroup column is a factor of the optimized
 levels whose levels are those of the subgroup variable in
-\code{summary$level}, in the same order. The number of patients in each
-level equals the published number of patients in \code{summary}. All other
-columns are unchanged.
+\code{summary$level}, in the same order. The number of patients and the
+number of events in each level equal \code{summary$patients} and
+\code{summary$events}. All other columns are unchanged.
 }
 \description{
 Refine sampled subgroup levels so that the subgroup
 statistics observed in the data match the published subgroup
-statistics in \code{summary}, while preserving the published number of
-patients in each subgroup level.
+statistics in \code{summary}, while preserving the assumed number of
+patients and number of events in each subgroup level.
 }
 \details{
 \code{group_optimize_constrained()} implements the
@@ -61,9 +61,12 @@ level, for example because one of its arms has no events, the loss is
 infinite.
 
 Each iteration draws a pair of patients \eqn{(i, j)} uniformly at
-random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
-levels if the swap reduces the loss. Otherwise, the subgroup levels
-stay the same, so the loss never increases. The search for each
+random from the pairs with \eqn{x_i \ne x_j} and \eqn{d_i = d_j},
+where \eqn{d_i} is the event indicator of patient \eqn{i}, and swaps
+their subgroup levels if the swap reduces the loss. Otherwise, the
+subgroup levels stay the same, so the loss never increases. If no
+such pair exists, no swap is possible and the subgroup levels are
+returned unchanged. The search for each
 subgroup variable stops when the loss falls below \code{tolerance} (on the
 linear hazard ratio scale) or after \code{iterations} iterations,
 whichever comes first. If the loss of any subgroup variable is still
@@ -73,8 +76,10 @@ at least \code{tolerance} after \code{iterations} iterations,
 final losses.
 
 The search is greedy, so it may settle in a local minimum. Swaps
-preserve the number of patients in each subgroup level, so the
-optimized counts equal the published number of patients in \code{summary}.
+exchange two patients with the same event status, so they preserve
+both the number of patients and the number of events in each
+subgroup level. The optimized counts equal \code{summary$patients} and
+\code{summary$events}.
 Use \code{\link[=group_optimize_unconstrained]{group_optimize_unconstrained()}} on the output of
 \code{\link[=group_sample_unconstrained]{group_sample_unconstrained()}} to optimize without the count
 constraint.
@@ -83,8 +88,8 @@ In addition to the requirements of \code{\link[=group_analysis_probability]{grou
 \code{patient} must have one column per subgroup variable in \code{summary},
 named after the subgroup variable, with no missing values and only the
 levels of that subgroup variable in \code{summary}. The number of patients
-in each subgroup level of these columns must equal the published
-number of patients in \code{summary}. The output of
+and the number of events in each subgroup level of these columns must
+equal \code{summary$patients} and \code{summary$events}. The output of
 \code{\link[=group_sample_constrained]{group_sample_constrained()}} satisfies these requirements. These
 columns are the starting subgroup levels, and all other columns of
 \code{patient} are returned unchanged.

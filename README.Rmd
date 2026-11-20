@@ -118,7 +118,7 @@ The model has no prognostic effect, so sampled subgroup levels are not (on avera
 
 Optimization refines a single sampled dataset so that its subgroup hazard ratios match the published ones.
 `group_optimize_unconstrained()` starts from the output of `group_sample_unconstrained()` and moves one patient at a time to the subgroup level that best reduces the discrepancy.
-`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients, so the number of patients in each subgroup level never changes.
+`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients with the same event status, so the numbers of patients and events in each subgroup level never change.
 
 ```{r, eval = TRUE}
 set.seed(0)
@@ -131,7 +131,7 @@ optimized <- group_optimize_constrained(sample, summary)
 group_analysis_summary(optimized)
 ```
 
-The optimized dataset matches the published patient counts and hazard ratios in `summary`.
+The optimized dataset matches the published patient counts, event counts and hazard ratios in `summary`.
 
 ```{r, eval = TRUE}
 summary

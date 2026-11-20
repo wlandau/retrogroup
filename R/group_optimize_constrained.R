@@ -3,8 +3,8 @@
 #' @family optimization
 #' @description Refine sampled subgroup levels so that the subgroup
 #'   statistics observed in the data match the published subgroup
-#'   statistics in `summary`, while preserving the published number of
-#'   patients in each subgroup level.
+#'   statistics in `summary`, while preserving the assumed number of
+#'   patients and number of events in each subgroup level.
 #' @details `group_optimize_constrained()` implements the
 #'   "Optimization for constrained sampling" section of
 #'   `vignette("optimization", package = "retrogroup")`, separately for each
@@ -18,9 +18,12 @@
 #'   infinite.
 #'
 #'   Each iteration draws a pair of patients \eqn{(i, j)} uniformly at
-#'   random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
-#'   levels if the swap reduces the loss. Otherwise, the subgroup levels
-#'   stay the same, so the loss never increases. The search for each
+#'   random from the pairs with \eqn{x_i \ne x_j} and \eqn{d_i = d_j},
+#'   where \eqn{d_i} is the event indicator of patient \eqn{i}, and swaps
+#'   their subgroup levels if the swap reduces the loss. Otherwise, the
+#'   subgroup levels stay the same, so the loss never increases. If no
+#'   such pair exists, no swap is possible and the subgroup levels are
+#'   returned unchanged. The search for each
 #'   subgroup variable stops when the loss falls below `tolerance` (on the
 #'   linear hazard ratio scale) or after `iterations` iterations,
 #'   whichever comes first. If the loss of any subgroup variable is still
@@ -30,8 +33,10 @@
 #'   final losses.
 #'
 #'   The search is greedy, so it may settle in a local minimum. Swaps
-#'   preserve the number of patients in each subgroup level, so the
-#'   optimized counts equal the published number of patients in `summary`.
+#'   exchange two patients with the same event status, so they preserve
+#'   both the number of patients and the number of events in each
+#'   subgroup level. The optimized counts equal `summary$patients` and
+#'   `summary$events`.
 #'   Use [group_optimize_unconstrained()] on the output of
 #'   [group_sample_unconstrained()] to optimize without the count
 #'   constraint.
@@ -40,8 +45,8 @@
 #'   `patient` must have one column per subgroup variable in `summary`,
 #'   named after the subgroup variable, with no missing values and only the
 #'   levels of that subgroup variable in `summary`. The number of patients
-#'   in each subgroup level of these columns must equal the published
-#'   number of patients in `summary`. The output of
+#'   and the number of events in each subgroup level of these columns must
+#'   equal `summary$patients` and `summary$events`. The output of
 #'   [group_sample_constrained()] satisfies these requirements. These
 #'   columns are the starting subgroup levels, and all other columns of
 #'   `patient` are returned unchanged.
@@ -51,9 +56,9 @@
 #' @return A tibble with the same rows and columns as `patient`, in the
 #'   same order. Each subgroup column is a factor of the optimized
 #'   levels whose levels are those of the subgroup variable in
-#'   `summary$level`, in the same order. The number of patients in each
-#'   level equals the published number of patients in `summary`. All other
-#'   columns are unchanged.
+#'   `summary$level`, in the same order. The number of patients and the
+#'   number of events in each level equal `summary$patients` and
+#'   `summary$events`. All other columns are unchanged.
 #' @inheritParams group_optimize_unconstrained
 #' @param iterations Non-negative whole number, the maximum number of
 #'   iterations for each subgroup variable. Each iteration draws one pair
@@ -122,7 +127,8 @@ group_optimize_constrained <- function(
 #' @return A list with elements:
 #'   * `x`: integer vector with one element per patient, the index of the
 #'     optimized subgroup level of each patient. Each level has the same
-#'     number of patients as in the starting `x`.
+#'     number of patients and the same number of patients with `d == 1`
+#'     as in the starting `x`.
 #'   * `loss`: numeric scalar, the final loss \eqn{\Delta(x)}.
 #' @inheritParams optimize_unconstrained_variable
 #' @examples
@@ -165,14 +171,27 @@ optimize_constrained_variable <- function(
   # Loss terms of x, one per subgroup level, and the loss Delta(x).
   terms <- optimize_loss_terms(x, z, t, d, hazard_ratio)
   loss <- sqrt(sum(terms))
-  # Swaps preserve the number of patients n_k in each subgroup level k,
-  # so the number of pairs (i, j) with x_i = k and x_j = l is n_k * n_l
-  # in every iteration. Each unordered pair of distinct levels k < l is
-  # one row of level_pairs, with weight n_k * n_l.
-  n <- tabulate(x, nbins = K)
+  # Swaps only exchange patients with the same event status, so they
+  # preserve the number n_ks of patients with event status s in each
+  # subgroup level k. The number of pairs (i, j) with x_i = k, x_j = l, and
+  # d_i = d_j = s is therefore n_ks * n_ls in every iteration. Each
+  # combination of an unordered pair of distinct levels k < l and an event
+  # status s is one row of candidates, with weight n_ks * n_ls.
+  counts <- cbind(
+    tabulate(x[d == 0L], nbins = K),
+    tabulate(x[d == 1L], nbins = K)
+  )
   level_pairs <- which(upper.tri(diag(K)), arr.ind = TRUE)
-  weights <- n[level_pairs[, 1L]] * n[level_pairs[, 2L]]
-  # Without any pair of patients in different levels, no swap is possible.
+  candidates <- cbind(
+    k = rep(level_pairs[, 1L], times = 2L),
+    l = rep(level_pairs[, 2L], times = 2L),
+    s = rep(c(0L, 1L), each = nrow(level_pairs))
+  )
+  status <- candidates[, "s"] + 1L
+  weights <- counts[cbind(candidates[, "k"], status)] *
+    counts[cbind(candidates[, "l"], status)]
+  # Without any pair of patients in different levels with the same event
+  # status, no swap is possible.
   if (!any(weights > 0)) {
     return(list(x = x, loss = unname(loss)))
   }
@@ -180,14 +199,16 @@ optimize_constrained_variable <- function(
   while (iteration < iterations && !(loss < tolerance)) {
     iteration <- iteration + 1L
     # Step 1: draw a pair of patients (i, j) uniformly at random from the
-    # pairs with x_i != x_j. First draw the pair of levels (x_i, x_j) with
-    # probability proportional to the number of such pairs n_k * n_l, then
-    # draw i and j uniformly from the patients in those levels.
-    pair <- level_pairs[sample.int(nrow(level_pairs), 1L, prob = weights), ]
-    x_i <- pair[[1L]]
-    x_j <- pair[[2L]]
-    patients_i <- which(x == x_i)
-    patients_j <- which(x == x_j)
+    # pairs with x_i != x_j and d_i = d_j. First draw the levels (x_i, x_j)
+    # and the event status s with probability proportional to the number
+    # of such pairs n_ks * n_ls, then draw i and j uniformly from the
+    # patients with event status s in those levels.
+    candidate <- candidates[sample.int(nrow(candidates), 1L, prob = weights), ]
+    x_i <- candidate[["k"]]
+    x_j <- candidate[["l"]]
+    s <- candidate[["s"]]
+    patients_i <- which(x == x_i & d == s)
+    patients_j <- which(x == x_j & d == s)
     i <- patients_i[sample.int(length(patients_i), 1L)]
     j <- patients_j[sample.int(length(patients_j), 1L)]
     # Step 2: compute the loss Delta(x^(i <-> j)) of the swap. A swap changes
@@ -217,8 +238,8 @@ optimize_constrained_variable <- function(
 #' @title Validate the subgroup counts of constrained optimization
 #' @noRd
 #' @return `NULL` (invisibly). Throws an error if the number of patients
-#'   in any subgroup level of `patient` differs from the published number
-#'   of patients in `summary`.
+#'   or the number of events in any subgroup level of `patient` differs
+#'   from the assumed counts in `summary`.
 #' @param patient Patient-level data with subgroup columns, the output of
 #'   [group_sample_constrained()]. Must already satisfy
 #'   `assert_optimize_arguments()`.
@@ -238,28 +259,34 @@ optimize_constrained_variable <- function(
 #'   try(assert_optimize_counts(sampled, summary))
 assert_optimize_counts <- function(patient, summary) {
   variables <- unique(summary$variable)
-  mismatched <- Filter(
+  mismatch <- vapply(
+    variables,
     \(variable) {
       rows <- summary$variable == variable
       levels <- summary$level[rows]
-      observed <- tabulate(
-        match(as.character(patient[[variable]]), levels),
-        nbins = length(levels)
+      index <- match(as.character(patient[[variable]]), levels)
+      patients <- tabulate(index, nbins = length(levels))
+      events <- tabulate(index[patient$event == 1L], nbins = length(levels))
+      counts <- c(
+        patients = any(patients != summary$patients[rows]),
+        events = any(events != summary$events[rows])
       )
-      any(observed != summary$patients[rows])
+      paste(names(counts)[counts], collapse = ", ")
     },
-    variables
+    character(1L)
   )
-  if (length(mismatched)) {
+  mismatch <- mismatch[nzchar(mismatch)]
+  if (length(mismatch)) {
     throw_error(
       c(
         paste(
-          "The number of patients in each subgroup level of patient",
-          "must equal the published number of patients in summary."
+          "The number of patients and the number of events in each",
+          "subgroup level of patient must equal the assumed counts",
+          "in summary."
         ),
         x = paste0(
           "Mismatched subgroup variable(s): ",
-          paste0("\"", mismatched, "\"", collapse = ", "),
+          paste0("\"", names(mismatch), "\" (", mismatch, ")", collapse = ", "),
           "."
         ),
         i = paste(

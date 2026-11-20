@@ -39,6 +39,11 @@ test_that("group_optimize_constrained() preserves the published counts", {
         data$summary$patients[rows],
         info = paste("seed", seed, "variable", variable)
       )
+      expect_equal(
+        as.integer(tapply(x$event, x[[variable]], sum)),
+        data$summary$events[rows],
+        info = paste("seed", seed, "variable", variable)
+      )
     }
   }
 })
@@ -145,6 +150,10 @@ test_that("optimize_constrained_variable() never increases the loss", {
     expect_identical(result$loss, after)
     expect_false(isTRUE(after > before))
     expect_identical(tabulate(result$x, 3L), tabulate(index, 3L))
+    expect_identical(
+      tabulate(result$x[patient$event == 1L], 3L),
+      tabulate(index[patient$event == 1L], 3L)
+    )
   }
 })
 
@@ -153,9 +162,11 @@ test_that("optimize_constrained_variable() only swaps patients", {
   patient <- data$patient
   summary <- data$summary[data$summary$variable == "sex", ]
   set.seed(0)
-  x <- sample(rep(1:2, times = summary$patients))
+  sample <- group_sample_constrained(patient, summary)
+  x <- as.integer(sample$sex)
   y <- x
-  for (iteration in seq_len(10L)) {
+  events <- patient$event == 1L
+  for (iteration in seq_len(20L)) {
     result <- retrogroup:::optimize_constrained_variable(
       x = y,
       z = patient$treatment,
@@ -165,10 +176,42 @@ test_that("optimize_constrained_variable() only swaps patients", {
       iterations = 1L,
       tolerance = 0
     )
-    expect_true(sum(result$x != y) %in% c(0L, 2L))
+    changed <- which(result$x != y)
+    expect_true(length(changed) %in% c(0L, 2L))
+    if (length(changed) == 2L) {
+      expect_identical(patient$event[changed[1L]], patient$event[changed[2L]])
+    }
     y <- result$x
   }
+  expect_false(identical(y, x))
   expect_identical(tabulate(y, 2L), tabulate(x, 2L))
+  expect_identical(tabulate(y[events], 2L), tabulate(x[events], 2L))
+})
+
+test_that("optimize_constrained_variable() returns x unchanged without a valid pair", {
+  data <- probability_small()
+  patient <- data$patient
+  x <- ifelse(patient$event == 1L, 1L, 2L)
+  hazard_ratio <- c(0.5, 2)
+  start <- sqrt(sum(retrogroup:::optimize_loss_terms(
+    x = x,
+    z = patient$treatment,
+    t = patient$time,
+    d = patient$event,
+    hazard_ratio = hazard_ratio
+  )))
+  set.seed(0)
+  result <- retrogroup:::optimize_constrained_variable(
+    x = x,
+    z = patient$treatment,
+    t = patient$time,
+    d = patient$event,
+    hazard_ratio = hazard_ratio,
+    iterations = 10L,
+    tolerance = 0
+  )
+  expect_identical(result$x, x)
+  expect_identical(result$loss, start)
 })
 
 test_that("optimize_constrained_variable() handles a single level", {
@@ -260,7 +303,17 @@ test_that("group_optimize_constrained() validates its arguments", {
   bad$age[bad$age == levels[1L]][1L] <- levels[2L]
   expect_error(
     group_optimize_constrained(bad, summary),
-    "Mismatched subgroup variable\\(s\\): \"age\"",
+    "Mismatched subgroup variable\\(s\\): \"age\" \\(patients\\)",
+    class = "retrogroup_error"
+  )
+  bad <- sample
+  events <- bad$event == 1L
+  i <- which(events & bad$age == levels[1L])[1L]
+  j <- which(!events & bad$age == levels[2L])[1L]
+  bad$age[c(i, j)] <- bad$age[c(j, i)]
+  expect_error(
+    group_optimize_constrained(bad, summary),
+    "Mismatched subgroup variable\\(s\\): \"age\" \\(events\\)",
     class = "retrogroup_error"
   )
   for (iterations in list(-1, 1.5, NA, c(1, 2), "1", Inf)) {
@@ -305,6 +358,21 @@ test_that("assert_optimize_counts() lists only mismatched variables", {
   )
   message <- conditionMessage(error)
   expect_match(message, "\"sex\"", fixed = TRUE)
+  expect_false(grepl("\"age\"", message, fixed = TRUE))
+  expect_false(grepl("\"node4\"", message, fixed = TRUE))
+  bad <- sample
+  events <- bad$event == 1L
+  i <- which(events & bad$sex == levels[1L])[1L]
+  j <- which(!events & bad$sex == levels[2L])[1L]
+  bad$sex[c(i, j)] <- bad$sex[c(j, i)]
+  expect_identical(table(bad$sex), table(sample$sex))
+  error <- tryCatch(
+    retrogroup:::assert_optimize_counts(bad, data$summary),
+    retrogroup_error = \(error) error
+  )
+  message <- conditionMessage(error)
+  expect_match(message, "\"sex\" (events)", fixed = TRUE)
+  expect_match(message, "number of events", fixed = TRUE)
   expect_false(grepl("\"age\"", message, fixed = TRUE))
   expect_false(grepl("\"node4\"", message, fixed = TRUE))
 })

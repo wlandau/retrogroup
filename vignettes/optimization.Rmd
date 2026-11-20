@@ -83,6 +83,7 @@ Each iteration:
 3. Updates $x \leftarrow x^{(i \leftrightarrow j)}$ if $\Delta(x^{(i \leftrightarrow j)}) < \Delta(x)$, and otherwise leaves $x$ unchanged.
 
 As with flips, the loss never increases.
+If no pair has $x_i \ne x_j$ and $d_i = d_j$, no swap is possible and $x$ stays unchanged.
 A swap changes the patients in levels $x_i$ and $x_j$ only, so an iteration needs two model fits.
 
 ## Stopping
