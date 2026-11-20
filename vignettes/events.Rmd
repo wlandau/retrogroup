@@ -1,0 +1,68 @@
+---
+title: "Approximating event counts using confidence intervals of published hazard ratios"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{events}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(retrogroup)
+```
+
+The methods in this package assume the subgroup-level event counts $e_1, \dots, e_K$ are available.
+However, these counts are not always published in the literature.
+This appendix vignette defines a method for approximating them using published subgroup-level hazard ratios, implemented in the `group_data_events()` function.
+
+The method takes the following as input:
+
+1. The assumed value of $\exp(\beta_k)$.
+2. $b_k$, either the upper or lower bound of a two-sided confidence interval of $\exp(\beta_k)$.
+3. The confidence level $1 - \alpha$ of the two-sided confidence interval.
+4. The treatment assignments $z_i$ for each patient $i = 1, \dots, n$.
+5. The event indicator $d_i$ for each patient $i = 1, \dots, n$.
+
+We can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
+
+$$
+\log(b_k) = \beta_k \pm \Phi^{-1}(1 - \alpha / 2) \sigma_k
+$$
+
+where $\Phi^{-1}(1 - \alpha / 2)$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of $\beta_k$.
+The variance $\sigma_k^2$ can be expressed as:
+
+$$
+\sigma_k^2 = \frac{( \log(b_k) - \beta_k )^2}{\Phi^{-1}(1 - \alpha / 2)^2}
+$$
+
+@parmar1998 gives the following approximation of variance $\sigma_k^2$:
+
+$$
+\sigma_k^2 \approx \frac{1}{e_k \rho (1 - \rho)}
+$$
+
+
+where $\rho$ is the proportion of patients randomized to treatment:
+
+$$
+\rho = \frac{1}{n}\sum_{i = 1}^n z_i
+$$
+
+Plugging in the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
+
+$$
+\begin{aligned}
+\frac{( \log(b_k) - \beta_k )^2}{\Phi^{-1}(1 - \alpha / 2)^2} &\approx \frac{1}{e_k \rho (1 - \rho)}\\
+e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{\Phi^{-1}(1 - \alpha / 2)^2}{\left (  \log(b_k) - \beta_k  \right )^2}
+\end{aligned}
+$$
+
+These approximate event counts do not necessarily sum to the total number of events in the patient-level data, so `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$.

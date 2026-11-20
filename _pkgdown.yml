@@ -20,10 +20,13 @@ articles:
   - model
   - sampling
   - optimization
-- title: Benchmarks
+- title: Verification
   contents:
   - benchmarks_sampling
   - benchmarks_optimization
+- title: Appendix
+  contents:
+  - events
 reference:
   - title: Example
     contents:

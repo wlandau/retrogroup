@@ -139,46 +139,7 @@ Each $e_k$ must not exceed $n_k$.
 Published event counts are the natural starting point, but they may not add up to the total number of events in the patient-level data, and they may not suit values of $n_k$ that differ from the published patient counts.
 In that case, a reasonable approach is to preserve the published event fraction of each level: multiply it by the chosen $n_k$, then rescale across levels and round so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
 
-If the publication does not report event counts at all, you can derive them using `group_event_counts()`, which calculates $e_k$ given:
-
-1. The assumed value of $\exp(\beta_k)$.
-2. $b_k$, either the upper or lower bound of a two-sided confidence interval of $\exp(\beta_k)$.
-3. The confidence level $1 - \alpha$ of the two-sided confidence interval.
-4. The treatment assignments $z_i$ for each patient $i = 1, \dots, n$.
-
-We can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
-
-$$
-\log(b_k) = \beta_k \pm z_{1 - \alpha/2} \sigma_k
-$$
-
-where $z_{1 - \alpha / 2}$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of $\beta_k$.
-The variance $\sigma_k^2$ can be expressed as:
-
-$$
-\sigma_k^2 = \frac{( \log(b_k) - \beta_k )^2}{z_{1 - \alpha/2}^2}
-$$
-
-@parmar1998 gives the following approximation of variance $\sigma_k^2$:
-
-$$
-\sigma_k^2 \approx \frac{1}{e_k \rho (1 - \rho)}
-$$
-
-
-where $\rho$ is the proportion of patients randomized to treatment:
-
-$$
-\rho = \frac{1}{n}\sum_{i = 1}^n z_i
-$$
-
-Plugging in the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
-
-$$
-\begin{aligned}
-\frac{( \log(b_k) - \beta_k )^2}{z_{1 - \alpha/2}^2} &\approx \frac{1}{e_k \rho (1 - \rho)}\\
-e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{z_{1 - \alpha/2}^2}{\left (  \log(b_k) - \beta_k  \right )^2}
-\end{aligned}
-$$
+If the publication does not report event counts at all, you can approximate them using `group_event_counts()`.
+See `vignette("events", package = "retrogroup")` for details.
 
 ## References
