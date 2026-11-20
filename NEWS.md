@@ -18,6 +18,8 @@
 ## Documentation
 
 * Clarify that the event counts carry some general prognostic information, but the timing of events within subgroup levels is not reproduced, and the statistician who uses a reconstructed dataset is responsible for the consequences.
+* Add the verification vignette "Prognostic benchmarks".
+  It tests how well sampled and optimized subgroups recover the true prognostic hazard ratios of the colon cancer subgroups.
 
 # retrogroup 0.0.2
 

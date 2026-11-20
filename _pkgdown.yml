@@ -24,6 +24,7 @@ articles:
   contents:
   - benchmarks_sampling
   - benchmarks_optimization
+  - prognostic
 - title: Appendix
   contents:
   - events

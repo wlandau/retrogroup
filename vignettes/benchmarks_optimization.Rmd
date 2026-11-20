@@ -1,0 +1,26 @@
+---
+title: "Optimization benchmarks"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Optimization benchmarks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

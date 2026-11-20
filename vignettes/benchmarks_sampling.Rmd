@@ -1,0 +1,329 @@
+---
+title: "Sampling benchmarks"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Sampling benchmarks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+<style>
+/* Fit figures to the text column of rmarkdown::html_vignette. */
+img {
+  box-sizing: border-box;
+  max-width: 100%;
+  height: auto;
+  margin-left: 0;
+  margin-right: 0;
+}
+</style>
+
+
+``` r
+library(retrogroup)
+library(ggplot2)
+```
+
+<details><summary>Show code</summary>
+
+``` r
+colon_reps <- 2000L          # Full scale: 2000 sampled datasets per sampler.
+simulated_datasets <- 50L    # Full scale: 50 simulated datasets.
+simulated_patients <- 10000L # Full scale: 10000 patients per simulated dataset.
+simulated_reps <- 200L       # Full scale: 200 sampled datasets per simulated dataset and sampler.
+```
+
+
+
+</details>
+
+Rendered on 2026-11-20 with `retrogroup` 0.0.3 at commit [c92f6e7](https://github.com/wlandau/retrogroup/commit/c92f6e762884372bbdad2beec661b05849c7e25a).
+
+## Purpose
+
+`vignette("sampling", package = "retrogroup")` claims that sampled datasets reproduce the subgroup hazard ratios on average.
+This vignette checks that claim for `group_sample_unconstrained()` and `group_sample_constrained()`.
+
+## Method
+
+Each benchmark starts from a patient-level dataset whose true subgroups are known.
+For each subgroup level, `group_analysis_summary()` fits the Cox model `survival::coxph(Surv(time, event) ~ treatment)` to the patients in that level, and the estimated hazard ratio is the target for that level.
+We then hide the true subgroups and give the sampler only the summary statistics.
+The sampler imputes the subgroups, and `group_analysis_summary()` fits the same Cox model to the patients in each imputed level.
+Over many sampled datasets, the mean hazard ratio in each imputed level should match its target.
+
+We run two versions of this experiment:
+
+1. **Colon cancer example.** The 619 patients of `group_example_patient()` with the target hazard ratios in `group_example_summary()`.
+   These are real data, so this example shows how the samplers perform in a realistic setting where the proportional hazards model behind `group_analysis_probability()` may not hold exactly.
+2. **Simulated example.** Datasets of 10000 patients each, with one subgroup variable of three levels, hazard ratios $(e^{-0.8}, 1, e^{0.5}) \approx (0.449, 1, 1.649)$, and prevalences $(0.3, 0.3, 0.4)$.
+   The data-generating model agrees with the model that `group_analysis_probability()` uses for the subgroup probabilities, so this example shows how the samplers perform when that model is correct.
+   Any remaining difference from the targets is due to the samplers, not to model misspecification.
+
+`group_sample_constrained()` promises that the number of patients and the number of events in each subgroup level of every sampled dataset exactly match the assumed counts in the summary.
+The benchmark checks this promise for every constrained sampled dataset, and it stops with an error if any count differs, so this vignette only renders if every constrained sampled dataset matches.
+
+Each experiment reports a table of targets, means over the sampled datasets, and their differences (mean minus target).
+Each figure shows the difference between a sampled dataset's estimate and its target: points are means, and bars span the central 95% of sampled datasets.
+
+<details><summary>Show code</summary>
+
+``` r
+samplers <- list(
+  Unconstrained = group_sample_unconstrained,
+  Constrained = group_sample_constrained
+)
+
+# Samplers that must reproduce the assumed counts of patients and events.
+constrained <- c(Unconstrained = FALSE, Constrained = TRUE)
+
+quantities <- c("Hazard ratio" = "hazard_ratio")
+
+# Stop unless the number of patients and the number of events in each
+# subgroup level of a sampled dataset equal the assumed counts in summary.
+# estimates has the rows of group_analysis_summary() in the order of summary,
+# with rows of NA for subgroup levels that have no patients.
+check_counts <- function(estimates, summary) {
+  matches <- identical(estimates$patients, summary$patients) &&
+    identical(estimates$events, summary$events)
+  if (!matches) {
+    stop(
+      "A constrained sampled dataset does not match the assumed counts.\n",
+      "Assumed patients: ", toString(summary$patients), "\n",
+      "Sampled patients: ", toString(estimates$patients), "\n",
+      "Assumed events: ", toString(summary$events), "\n",
+      "Sampled events: ", toString(estimates$events),
+      call. = FALSE
+    )
+  }
+}
+
+# Estimates from repeated calls to one sampler on one dataset:
+# one row per sampled dataset, subgroup level, and quantity.
+# If constrained is TRUE, every sampled dataset must match the assumed counts.
+sample_estimates <- function(sampler, data, reps, constrained) {
+  summary <- data$summary
+  variables <- unique(summary$variable)
+  key <- paste(summary$variable, summary$level)
+  # Array of estimates: subgroup level x quantity x sampled dataset.
+  fits <- replicate(reps, {
+    sample <- sampler(data$patient, summary)
+    estimates <- group_analysis_summary(sample, variables)
+    rows <- match(key, paste(estimates$variable, estimates$level))
+    if (constrained) {
+      check_counts(estimates[rows, ], summary)
+    }
+    as.matrix(estimates[rows, quantities, drop = FALSE])
+  })
+  subgroup <- paste0(summary$variable, ": ", summary$level)
+  rows <- lapply(names(quantities), \(quantity) {
+    data.frame(
+      subgroup = factor(subgroup, levels = subgroup),
+      quantity = factor(quantity, levels = names(quantities)),
+      target = summary[[quantities[[quantity]]]],
+      estimate = c(fits[, quantities[[quantity]], ])
+    )
+  })
+  do.call(rbind, rows)
+}
+
+# Benchmark every sampler on the same list of datasets.
+# Returns one row per sampler, subgroup level, and quantity.
+benchmark <- function(datasets, reps) {
+  estimates <- lapply(names(samplers), \(name) {
+    estimates <- lapply(
+      datasets,
+      \(data) {
+        sample_estimates(samplers[[name]], data, reps, constrained[[name]])
+      }
+    )
+    cbind(
+      sampler = factor(name, levels = names(samplers)),
+      do.call(rbind, estimates)
+    )
+  })
+  estimates <- do.call(rbind, estimates)
+  estimates$difference <- estimates$estimate - estimates$target
+  out <- stats::aggregate(
+    cbind(target, estimate, difference) ~ subgroup + quantity + sampler,
+    data = estimates,
+    FUN = mean
+  )
+  interval <- stats::aggregate(
+    difference ~ subgroup + quantity + sampler,
+    data = estimates,
+    FUN = stats::quantile,
+    probs = c(0.025, 0.975)
+  )
+  out$lower <- interval$difference[, 1L]
+  out$upper <- interval$difference[, 2L]
+  out
+}
+
+simulate_dataset <- function(n) {
+  beta <- c(-0.8, 0, 0.5)
+  levels <- c("low", "middle", "high")
+  treatment <- stats::rbinom(n, 1L, 0.5)
+  x <- sample.int(3L, n, replace = TRUE, prob = c(0.3, 0.3, 0.4))
+  event_time <- stats::rexp(n, 0.1 * exp(beta[x] * treatment))
+  censor_time <- stats::runif(n, 0, 20)
+  data <- tibble::tibble(
+    arm = ifelse(treatment == 1L, "treatment", "control"),
+    time = pmin(event_time, censor_time),
+    event = as.integer(event_time <= censor_time)
+  )
+  patient <- group_data_patient(
+    data,
+    arm = "arm",
+    treatment = "treatment",
+    time = "time",
+    event = "event"
+  )
+  # The true subgroups give the assumed subgroup statistics, then the
+  # sampler only sees patient (without the subgroups) and summary.
+  truth <- patient
+  truth$group <- factor(levels[x], levels = levels)
+  summary <- group_data_summary(
+    group_analysis_summary(truth, "group"),
+    variable = "variable",
+    level = "level",
+    patients = "patients",
+    events = "events",
+    hazard_ratio = "hazard_ratio"
+  )
+  list(patient = patient, summary = summary)
+}
+
+# Show 3 decimal places, but use 3 significant figures for nonzero values
+# that would otherwise round to zero, in scientific notation.
+format_number <- function(x) {
+  ifelse(
+    x != 0 & round(x, 3L) == 0,
+    formatC(x, digits = 2L, format = "e"),
+    formatC(x, digits = 3L, format = "f")
+  )
+}
+
+show_table <- function(x) {
+  hr <- x[x$quantity == "Hazard ratio", ]
+  knitr::kable(
+    data.frame(
+      Sampler = hr$sampler,
+      Subgroup = hr$subgroup,
+      `Target HR` = format_number(hr$target),
+      `Mean HR` = format_number(hr$estimate),
+      `HR difference` = format_number(hr$difference),
+      check.names = FALSE
+    ),
+    align = c("l", "l", rep("r", 3L)),
+    row.names = FALSE
+  )
+}
+
+show_plot <- function(x) {
+  ggplot(x, aes(x = difference, xmin = lower, xmax = upper, y = subgroup)) +
+    geom_vline(xintercept = 0, color = "#8c8b86") +
+    geom_pointrange(color = "#2a78d6", size = 0.4) +
+    facet_grid(sampler ~ quantity, scales = "free_x") +
+    scale_y_discrete(limits = rev) +
+    labs(x = "Estimate minus target", y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.spacing = grid::unit(1, "lines")
+    )
+}
+```
+
+
+
+</details>
+
+## Colon cancer example
+
+We draw 2000 sampled datasets with each sampler.
+
+
+``` r
+colon <- list(
+  patient = group_data_patient(
+    group_example_patient(),
+    arm = "arm",
+    treatment = "Lev+5FU",
+    time = "time",
+    event = "event"
+  ),
+  summary = group_data_summary(
+    group_example_summary(),
+    variable = "variable",
+    level = "level",
+    patients = "patients",
+    events = "events",
+    hazard_ratio = "hazard_ratio"
+  )
+)
+
+set.seed(1)
+colon_results <- benchmark(list(colon), reps = colon_reps)
+```
+
+
+
+|Sampler       |Subgroup        | Target HR| Mean HR| HR difference|
+|:-------------|:---------------|---------:|-------:|-------------:|
+|Unconstrained |age: under 60   |     0.844|   0.851|         0.007|
+|Unconstrained |age: 60 or over |     0.579|   0.575|        -0.004|
+|Unconstrained |node4: no       |     0.659|   0.671|         0.012|
+|Unconstrained |node4: yes      |     0.732|   0.759|         0.027|
+|Unconstrained |sex: female     |     0.863|   0.881|         0.018|
+|Unconstrained |sex: male       |     0.519|   0.523|         0.005|
+|Constrained   |age: under 60   |     0.844|   0.836|        -0.009|
+|Constrained   |age: 60 or over |     0.579|   0.594|         0.015|
+|Constrained   |node4: no       |     0.659|   0.655|        -0.004|
+|Constrained   |node4: yes      |     0.732|   0.805|         0.073|
+|Constrained   |sex: female     |     0.863|   0.867|         0.005|
+|Constrained   |sex: male       |     0.519|   0.541|         0.022|
+
+
+
+<div class="figure">
+<img src="benchmarks_sampling_figures/colon-plot-1.png" alt="Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per colon subgroup level, plotted as estimate minus target with a vertical reference line at zero."  />
+<p class="caption">Colon cancer example: estimate minus target of the hazard ratio for each subgroup level and sampler. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average.</p>
+</div>
+
+## Simulated example
+
+We simulate 50 datasets and draw 200 sampled datasets from each with each sampler.
+Each estimate is compared with the target of the simulated dataset it was sampled from, and the results pool all simulated datasets.
+
+
+``` r
+set.seed(2)
+simulated <- replicate(
+  simulated_datasets,
+  simulate_dataset(simulated_patients),
+  simplify = FALSE
+)
+simulated_results <- benchmark(simulated, reps = simulated_reps)
+```
+
+
+
+|Sampler       |Subgroup      | Target HR| Mean HR| HR difference|
+|:-------------|:-------------|---------:|-------:|-------------:|
+|Unconstrained |group: low    |     0.448|   0.448|      3.16e-04|
+|Unconstrained |group: middle |     0.998|   1.000|         0.002|
+|Unconstrained |group: high   |     1.646|   1.649|         0.003|
+|Constrained   |group: low    |     0.448|   0.452|         0.005|
+|Constrained   |group: middle |     0.998|   1.000|         0.002|
+|Constrained   |group: high   |     1.646|   1.636|        -0.010|
+
+
+
+<div class="figure">
+<img src="benchmarks_sampling_figures/simulated-plot-1.png" alt="Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero."  />
+<p class="caption">Simulated example: estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average.</p>
+</div>
