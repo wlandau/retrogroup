@@ -19,8 +19,8 @@ knitr::opts_chunk$set(
 library(retrogroup)
 ```
 
-`vignette("sampling", package = "retrogroup")` defines methods for sampling subgroup levels based on posterior probabilities.
-Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should match the assumed hazard ratios on average.
+`vignette("sampling", package = "retrogroup")` defines methods for sampling subgroup levels based on estimated posterior probabilities.
+Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should approximately match the assumed hazard ratios on average, provided the patient-level data are consistent with the model.
 However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
 This vignette defines methods to refine an individual simulated dataset so that the observed subgroup hazard ratios match the assumed hazard ratios.
 
@@ -41,7 +41,7 @@ Let $\hat\beta_k(x)$ be the estimated log hazard ratio of treatment versus contr
 The loss is the Euclidean distance between observed and assumed hazard ratios:
 
 $$
-\Delta(x) = \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat\beta_k(x)\right) - \exp \left (\beta_k\right) \right)^2}
+\Delta(x) := \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat\beta_k(x)\right) - \exp \left (\beta_k\right) \right)^2}
 $$
 
 The square root puts the loss, and therefore the user-specified tolerance, on the hazard ratio scale.
@@ -51,7 +51,7 @@ If the model cannot be fit for some subgroup level, for example because the leve
 ## Optimization for unconstrained sampling
 
 Unconstrained sampling draws subgroup levels independently.
-We expect the observed number of patients in each subgroup level to deviate from the assumed subgroup counts $n_1, \ldots, n_K$. Likewise with the event counts $e_1, \ldots, e_K$.
+We expect the observed number of patients in each subgroup level to deviate from the assumed subgroup counts $n_1, \ldots, n_K$, and likewise for the event counts $e_1, \ldots, e_K$.
 So although the observed subgroup level hazard ratios of an unconstrained optimized dataset may match the assumed hazard ratios, the subgroup variables are not built to carry prognostic information and are not suitable for covariate adjustment.
 For any prognostic value, we need constrained sampling and its optimization so the subgroup-level event counts are preserved.
 
@@ -60,7 +60,7 @@ Each iteration:
 
 1. Draws a patient $i$ uniformly at random from $1, \ldots, n$, independently of previous iterations and with replacement.
 2. Computes the counterfactual loss $\Delta(x^{(i \to k)})$ for every subgroup level $k = 1, \ldots, K$.
-3. Updates $x \leftarrow x^{(i \to k^*)}$, where $k^* = \operatorname{argmin}_k \Delta(x^{(i \to k)})$.
+3. Updates $x \leftarrow x^{(i \to k^*)}$, where $k^* := \operatorname{argmin}_k \Delta(x^{(i \to k)})$.
 
 The candidates include $x^{(i \to x_i)}$, which is just $x$ unchanged, so the loss never increases.
 If the current level ties for the minimum, the patient stays put.
