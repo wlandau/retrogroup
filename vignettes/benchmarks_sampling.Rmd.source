@@ -55,7 +55,7 @@ library(ggplot2)
 ```
 
 ```{r settings, fold = TRUE}
-colon_reps <- 2000L          # Full scale: 2000 sampled datasets per sampler.
+colon_reps <- 200L          # Full scale: 2000 sampled datasets per sampler.
 simulated_datasets <- 50L    # Full scale: 50 simulated datasets.
 simulated_patients <- 10000L # Full scale: 10000 patients per simulated dataset.
 simulated_reps <- 200L       # Full scale: 200 sampled datasets per simulated dataset and sampler.
@@ -284,9 +284,14 @@ show_plot <- function(x) {
     geom_pointrange(color = "#2a78d6", size = 0.4) +
     facet_grid(sampler ~ quantity, scales = "free_x") +
     scale_y_discrete(limits = rev) +
-    labs(x = "Estimate minus target", y = NULL) +
+    labs(
+      title = "Bars: central 95% probability mass of sampled datasets",
+      x = "Estimate minus target",
+      y = NULL
+    ) +
     theme_minimal(base_size = 11) +
     theme(
+      plot.title.position = "plot",
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.spacing = grid::unit(1, "lines")
@@ -321,9 +326,15 @@ show_mean_plot <- function(x) {
       values = c("Includes zero" = "#2a78d6", "Excludes zero" = "#d03b3b"),
       drop = FALSE
     ) +
-    labs(x = "Mean of estimate minus target", y = NULL, color = "95% CI") +
+    labs(
+      title = "Bars: 95% confidence interval of the mean",
+      x = "Mean of estimate minus target",
+      y = NULL,
+      color = "95% CI"
+    ) +
     theme_minimal(base_size = 11) +
     theme(
+      plot.title.position = "plot",
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.spacing = grid::unit(1, "lines"),
@@ -363,7 +374,7 @@ colon_results <- benchmark(list(colon), reps = colon_reps)
 show_table(colon_results)
 ```
 
-```{r colon-plot, echo = FALSE, fig.height = 5, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per colon subgroup level, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Colon cancer example: estimate minus target of the hazard ratio for each subgroup level and sampler. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
+```{r colon-plot, echo = FALSE, fig.height = 5, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per colon subgroup level, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Colon cancer example: estimate minus target of the hazard ratio for each subgroup level and sampler. Points are means over the sampled datasets, and bars span the central 95% probability mass of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
 show_plot(colon_results)
 ```
 
@@ -390,7 +401,7 @@ simulated_results <- benchmark(simulated, reps = simulated_reps)
 show_table(simulated_results)
 ```
 
-```{r simulated-plot, echo = FALSE, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Simulated example: estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
+```{r simulated-plot, echo = FALSE, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Simulated example: estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span the central 95% probability mass of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
 show_plot(simulated_results)
 ```
 

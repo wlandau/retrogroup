@@ -55,7 +55,7 @@ library(ggplot2)
 ```
 
 ```{r settings, fold = TRUE}
-reps <- 1000L         # Replications per method. Full scale: 1000L.
+reps <- 100L         # Replications per method. Full scale: 1000L.
 iterations <- 10000L  # Maximum iterations per subgroup variable. Full scale: 10000L.
 tolerance <- 1e-3     # Stop when the loss falls below this value. Full scale: 1e-3.
 ```
@@ -338,9 +338,18 @@ show_plot <- function(summary, truth) {
       values = c(Truth = "#d6542a", Replicates = "#2a78d6"),
       guide = "none"
     ) +
-    labs(x = "Prognostic hazard ratio (log scale)", y = NULL) +
+    labs(
+      title = paste(
+        "Bars: 95% confidence interval (Truth rows)",
+        "central 95% probability mass of replications (other rows)",
+        sep = "\nand "
+      ),
+      x = "Prognostic hazard ratio (log scale)",
+      y = NULL
+    ) +
     theme_minimal(base_size = 11) +
     theme(
+      plot.title.position = "plot",
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.spacing = grid::unit(1, "lines"),
