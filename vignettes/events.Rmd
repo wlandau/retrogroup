@@ -1,6 +1,7 @@
 ---
 title: "Approximating event counts using confidence intervals of published hazard ratios"
 output: rmarkdown::html_vignette
+bibliography: ../inst/bibliography.bib
 vignette: >
   %\VignetteIndexEntry{events}
   %\VignetteEngine{knitr::rmarkdown}
@@ -66,3 +67,5 @@ e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{\Phi^{-1}(1 - \alpha / 2)^2}{\left 
 $$
 
 These approximate event counts do not necessarily sum to the total number of events in the patient-level data, so `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$.
+
+## References
