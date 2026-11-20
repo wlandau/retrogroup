@@ -15,6 +15,10 @@ A tibble with one row per subgroup level and the following columns:
 \item \code{events}: integer, number of events in the subgroup level.
 \item \code{hazard_ratio}: numeric, estimated hazard ratio of treatment
 versus control in the subgroup level.
+\item \code{lower}: numeric, lower bound of the 95\% confidence interval of the
+hazard ratio.
+\item \code{upper}: numeric, upper bound of the 95\% confidence interval of the
+hazard ratio.
 }
 }
 \description{
@@ -41,7 +45,11 @@ There are three subgroup variables:
 Within each subgroup level, \code{\link[=group_analysis_summary]{group_analysis_summary()}} counts the
 patients and events and fits a Cox proportional hazards model of
 survival on treatment (\code{"Lev+5FU"} versus \code{"Obs"}) to get the hazard
-ratio.
+ratio. The columns \code{lower} and \code{upper} are the bounds of the 95\%
+Wald confidence interval of the hazard ratio from the same model, as
+a publication would report them. \code{\link[=group_data_summary]{group_data_summary()}} ignores
+these columns, but \code{\link[=group_data_events]{group_data_events()}} can use them to approximate
+the event counts.
 }
 \examples{
   group_example_summary()

@@ -2,6 +2,7 @@
 
 export(group_analysis_probability)
 export(group_analysis_summary)
+export(group_data_events)
 export(group_data_patient)
 export(group_data_summary)
 export(group_example_patient)

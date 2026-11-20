@@ -76,9 +76,39 @@ First, the variance approximation is most accurate when $\beta_k$ is close to 0 
 Second, the treatment allocation within level $k$ may differ from the overall proportion $\bar{z}$, especially in small subgroups.
 Third, publications round hazard ratios and confidence bounds, usually to two decimal places, which can change $e_k$ noticeably when the confidence interval is narrow.
 
-These approximate event counts do not necessarily sum to the total number of events in the patient-level data, and they may exceed the subgroup sample sizes.
-So `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$ and $e_k \le n_k$ for each level $k$.
+These approximate event counts do not necessarily sum to the total number of events in the patient-level data, they may exceed the subgroup sample sizes, and they may be less than 1.
+So `retrogroup` reconciles them deterministically, separately for each subgroup variable.
+First, it rounds each approximate count to the nearest whole number and clamps it to the interval $[1, n_k]$.
+Then it makes passes over the levels $k = 1, \ldots, K$ in order.
+In each pass, it adds 1 to each level with $e_k < n_k$ if the counts sum to less than $\sum_{i = 1}^n d_i$, or subtracts 1 from each level with $e_k > 1$ if they sum to more, stopping as soon as $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$.
+The result satisfies $1 \le e_k \le n_k$ for each level $k$.
+A solution exists if and only if $K \le \sum_{i = 1}^n d_i \le \sum_{k = 1}^K n_k$, and `group_data_events()` throws an error otherwise.
 This is only one of many possible ways to reconcile the counts.
 The final choice is up to the judgment of the statistician, and any downstream subgroup analyses should explicitly state the subgroup event counts used and how they were chosen.
+
+## Usage
+
+`group_data_events(patient, summary, bound, confidence = 0.95)` takes the output of `group_data_patient()`, the output of `group_data_summary()` with `events = NULL`, a vector `bound` of confidence bounds $b_k$ with one element per row of `summary`, and the confidence level $1 - \alpha$.
+It returns a copy of `summary` with the reconciled event counts, ready for the rest of the workflow.
+
+```{r}
+patient <- group_data_patient(
+  group_example_patient(),
+  arm = "arm",
+  treatment = "Lev+5FU",
+  time = "time",
+  event = "event"
+)
+data <- group_example_summary()
+summary <- group_data_summary(
+  data,
+  variable = "variable",
+  level = "level",
+  patients = "patients",
+  events = NULL,
+  hazard_ratio = "hazard_ratio"
+)
+group_data_events(patient, summary, bound = data$upper)
+```
 
 ## References

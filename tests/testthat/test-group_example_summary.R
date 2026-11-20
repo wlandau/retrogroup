@@ -4,13 +4,23 @@ test_that("group_example_summary() has the expected structure", {
   expect_equal(nrow(x), 6L)
   expect_equal(
     colnames(x),
-    c("variable", "level", "patients", "events", "hazard_ratio")
+    c(
+      "variable",
+      "level",
+      "patients",
+      "events",
+      "hazard_ratio",
+      "lower",
+      "upper"
+    )
   )
   expect_type(x$variable, "character")
   expect_type(x$level, "character")
   expect_type(x$patients, "integer")
   expect_type(x$events, "integer")
   expect_type(x$hazard_ratio, "double")
+  expect_type(x$lower, "double")
+  expect_type(x$upper, "double")
   expect_false(anyNA(x))
 })
 
@@ -31,6 +41,8 @@ test_that("group_example_summary() has the expected contents", {
   expect_true(all(x$patients > 0L))
   expect_true(all(x$events > 0L))
   expect_true(all(x$hazard_ratio > 0))
+  expect_true(all(x$lower > 0))
+  expect_true(all(x$lower < x$hazard_ratio & x$hazard_ratio < x$upper))
 })
 
 test_that("group_example_summary() agrees with direct Cox fits", {
@@ -52,5 +64,7 @@ test_that("group_example_summary() agrees with direct Cox fits", {
     expect_equal(x$patients[row], nrow(subset))
     expect_equal(x$events[row], sum(subset$status))
     expect_equal(x$hazard_ratio[row], exp(unname(stats::coef(fit))))
+    interval <- unname(exp(stats::confint(fit))[1L, ])
+    expect_equal(c(x$lower[row], x$upper[row]), interval)
   }
 })

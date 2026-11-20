@@ -30,6 +30,8 @@ The vignettes explain the method and check its performance:
   - [The model and posterior](https://wlandau.github.io/retrogroup/articles/model.html)
   - [Sampling subgroups](https://wlandau.github.io/retrogroup/articles/sampling.html)
   - [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html)
+- Appendix
+  - [Approximating event counts](https://wlandau.github.io/retrogroup/articles/events.html)
 - Benchmarks
   - [Sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html)
   - [Optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html)
@@ -63,19 +65,19 @@ group_example_patient()
 ```
 
 `group_example_summary()` returns subgroup statistics like the ones a publication would report.
-For each level of age, nodal status, and sex, it gives the number of patients, the number of events, and the hazard ratio of treatment versus control.
+For each level of age, nodal status, and sex, it gives the number of patients, the number of events, the hazard ratio of treatment versus control, and the 95% confidence interval of the hazard ratio.
 
 ``` r
 group_example_summary()
-#> # A tibble: 6 × 5
-#>   variable level      patients events hazard_ratio
-#>   <chr>    <chr>         <int>  <int>        <dbl>
-#> 1 age      under 60        280    129        0.844
-#> 2 age      60 or over      339    162        0.579
-#> 3 node4    no              453    177        0.659
-#> 4 node4    yes             166    114        0.732
-#> 5 sex      female          312    152        0.863
-#> 6 sex      male            307    139        0.519
+#> # A tibble: 6 × 7
+#>   variable level      patients events hazard_ratio lower upper
+#>   <chr>    <chr>         <int>  <int>        <dbl> <dbl> <dbl>
+#> 1 age      under 60        280    129        0.844 0.596 1.20 
+#> 2 age      60 or over      339    162        0.579 0.423 0.792
+#> 3 node4    no              453    177        0.659 0.489 0.889
+#> 4 node4    yes             166    114        0.732 0.505 1.06 
+#> 5 sex      female          312    152        0.863 0.628 1.19 
+#> 6 sex      male            307    139        0.519 0.365 0.737
 ```
 
 ### Pre-processing
@@ -101,6 +103,49 @@ summary <- group_data_summary(
   hazard_ratio = "hazard_ratio"
 )
 ```
+
+### Event counts (optional)
+
+Some publications report confidence intervals of the subgroup hazard ratios, but not the subgroup event counts.
+In that case, `group_data_events()` can approximate the event counts from the confidence bounds.
+First, call `group_data_summary()` with `events = NULL` to skip the event counts.
+
+``` r
+summary_no_events <- group_data_summary(
+  group_example_summary(),
+  variable = "variable",
+  level = "level",
+  patients = "patients",
+  events = NULL,
+  hazard_ratio = "hazard_ratio"
+)
+```
+
+Then pass either the lower or the upper confidence bound of each hazard ratio to `group_data_events()`.
+It returns a new summary object with the approximate event counts, adjusted so that they add up to the total number of events in `patient` and do not exceed the number of patients of any level.
+
+``` r
+summary_approximate <- group_data_events(
+  patient,
+  summary_no_events,
+  bound = group_example_summary()$upper
+)
+summary_approximate
+#> # A tibble: 6 × 5
+#>   variable level      patients events hazard_ratio
+#>   <chr>    <chr>         <int>  <int>        <dbl>
+#> 1 age      under 60        280    131        0.844
+#> 2 age      60 or over      339    160        0.579
+#> 3 node4    no              453    176        0.659
+#> 4 node4    yes             166    115        0.732
+#> 5 sex      female          312    159        0.863
+#> 6 sex      male            307    132        0.519
+```
+
+The approximate event counts are close to the true counts in `summary`, but they are not exact.
+Choosing event counts is a decision about the reconstruction, so please disclose the counts used and how they were chosen.
+See [Approximating event counts](https://wlandau.github.io/retrogroup/articles/events.html) for the method.
+The rest of this example uses `summary`, which has the true event counts.
 
 ### Sampling
 

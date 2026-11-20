@@ -107,7 +107,9 @@ test_that("sample_constrained_variable() never gets stuck", {
     n <- sample.int(8L, K, replace = TRUE)
     e <- vapply(n, \(n_k) sample(0:n_k, 1L), integer(1L))
     e[1L] <- n[1L]
-    if (K > 2L) e[2L] <- min(1L, n[2L])
+    if (K > 2L) {
+      e[2L] <- min(1L, n[2L])
+    }
     N <- sum(n)
     d <- sample(rep(c(1L, 0L), c(sum(e), N - sum(e))))
     epsilon <- 1e-7

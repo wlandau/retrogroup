@@ -28,15 +28,19 @@
 #'   subgroup variable, and each level must satisfy
 #'   \eqn{1 \le e_k \le n_k}. See the "Event counts" section of
 #'   `vignette("framing", package = "retrogroup")` for how to choose event
-#'   counts, and `group_data_events()` for approximating them from
+#'   counts, and [group_data_events()] for approximating them from
 #'   confidence intervals when the publication does not report them.
+#'   For that purpose, `events = NULL` skips the checks on event counts
+#'   and sets every `events` value to `NA`. Such a summary is only valid
+#'   input to [group_data_events()]. Every other function rejects it.
 #' @return A tibble with one row per subgroup level, in the same order as
 #'   `data`, and the following columns:
 #'   * `variable`: character, name of the subgroup variable.
 #'   * `level`: character, level of the subgroup variable.
 #'   * `patients`: integer, number of patients \eqn{n_k} in the subgroup
 #'     level.
-#'   * `events`: integer, number of events \eqn{e_k} in the subgroup level.
+#'   * `events`: integer, number of events \eqn{e_k} in the subgroup level,
+#'     or `NA` if `events` is `NULL`.
 #'   * `hazard_ratio`: numeric, assumed hazard ratio
 #'     \eqn{\exp(\beta_k)} of treatment versus control in the subgroup
 #'     level.
@@ -58,7 +62,10 @@
 #'   number of events to assign to each level of the reconstructed
 #'   subgroup variable. The column must contain whole numbers with no
 #'   missing values, each at least 1 and at most the number of patients
-#'   in the level.
+#'   in the level. The event counts must have the same total for every
+#'   subgroup variable. Alternatively, `NULL` to set every `events` value
+#'   to `NA` and approximate the event counts later with
+#'   [group_data_events()].
 #' @param hazard_ratio Character string, name of the column in `data`
 #'   with the assumed hazard ratio of treatment versus control in each
 #'   subgroup level, on the natural scale (not the log scale). The column
@@ -92,7 +99,11 @@ group_data_summary <- function(
     variable = as.character(data[[variable]]),
     level = as.character(data[[level]]),
     patients = as.integer(data[[patients]]),
-    events = as.integer(data[[events]]),
+    events = if (is.null(events)) {
+      rep(NA_integer_, nrow(data))
+    } else {
+      as.integer(data[[events]])
+    },
     hazard_ratio = as.numeric(data[[hazard_ratio]])
   )
 }
@@ -137,16 +148,14 @@ assert_data_summary <- function(
     throw_error("data must have at least two rows.")
   }
   # column name arguments
-  assert_columns(
-    data,
-    list(
-      variable = variable,
-      level = level,
-      patients = patients,
-      events = events,
-      hazard_ratio = hazard_ratio
-    )
+  columns <- list(
+    variable = variable,
+    level = level,
+    patients = patients,
+    events = events,
+    hazard_ratio = hazard_ratio
   )
+  assert_columns(data, Filter(Negate(is.null), columns))
   # variable
   variables <- data[[variable]]
   label <- paste0("column \"", variable, "\" (variable)")
@@ -231,7 +240,60 @@ assert_data_summary <- function(
     )
   }
   # events
-  values <- data[[events]]
+  if (!is.null(events)) {
+    assert_summary_events(data[[events]], events, variables, levels, n)
+  }
+  # hazard_ratio
+  values <- data[[hazard_ratio]]
+  label <- paste0("column \"", hazard_ratio, "\" (hazard_ratio)")
+  if (!is.numeric(values)) {
+    throw_error(paste(label, "must be numeric."))
+  }
+  if (anyNA(values) || !all(is.finite(values))) {
+    throw_error(paste(label, "must be finite with no missing values."))
+  }
+  if (any(values <= 0)) {
+    throw_error(
+      c(
+        paste(label, "must be strictly positive."),
+        i = paste(
+          "Hazard ratios must be on the natural scale.",
+          "A value of 0 or below usually comes from a typo",
+          "or from supplying log hazard ratios."
+        )
+      )
+    )
+  }
+  invisible()
+}
+
+#' @title Validate the event counts of `group_data_summary()`
+#' @noRd
+#' @return `NULL` (invisibly). Throws an error if the event counts are
+#'   invalid.
+#' @param values The column of event counts.
+#' @param events Character string, name of the column of event counts.
+#' @param variables Character vector, subgroup variable of each row.
+#' @param levels Character vector, level of each row.
+#' @param n Numeric vector, number of patients of each row.
+#' @examples
+#'   assert_summary_events(
+#'     c(2L, 1L, 1L, 2L),
+#'     "events",
+#'     c("age", "age", "sex", "sex"),
+#'     c("young", "old", "female", "male"),
+#'     c(3L, 2L, 2L, 3L)
+#'   )
+#'   try(
+#'     assert_summary_events(
+#'       c(0L, 3L, 1L, 2L),
+#'       "events",
+#'       c("age", "age", "sex", "sex"),
+#'       c("young", "old", "female", "male"),
+#'       c(3L, 2L, 2L, 3L)
+#'     )
+#'   )
+assert_summary_events <- function(values, events, variables, levels, n) {
   label <- paste0("column \"", events, "\" (events)")
   if (!is.numeric(values)) {
     throw_error(paste(label, "must be numeric."))
@@ -284,27 +346,6 @@ assert_data_summary <- function(
           "."
         ),
         i = message_count_adjustment("event")
-      )
-    )
-  }
-  # hazard_ratio
-  values <- data[[hazard_ratio]]
-  label <- paste0("column \"", hazard_ratio, "\" (hazard_ratio)")
-  if (!is.numeric(values)) {
-    throw_error(paste(label, "must be numeric."))
-  }
-  if (anyNA(values) || !all(is.finite(values))) {
-    throw_error(paste(label, "must be finite with no missing values."))
-  }
-  if (any(values <= 0)) {
-    throw_error(
-      c(
-        paste(label, "must be strictly positive."),
-        i = paste(
-          "Hazard ratios must be on the natural scale.",
-          "A value of 0 or below usually comes from a typo",
-          "or from supplying log hazard ratios."
-        )
       )
     )
   }

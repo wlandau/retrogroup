@@ -29,7 +29,10 @@ strictly positive whole numbers with no missing values.}
 number of events to assign to each level of the reconstructed
 subgroup variable. The column must contain whole numbers with no
 missing values, each at least 1 and at most the number of patients
-in the level.}
+in the level. The event counts must have the same total for every
+subgroup variable. Alternatively, \code{NULL} to set every \code{events} value
+to \code{NA} and approximate the event counts later with
+\code{\link[=group_data_events]{group_data_events()}}.}
 
 \item{hazard_ratio}{Character string, name of the column in \code{data}
 with the assumed hazard ratio of treatment versus control in each
@@ -44,7 +47,8 @@ A tibble with one row per subgroup level, in the same order as
 \item \code{level}: character, level of the subgroup variable.
 \item \code{patients}: integer, number of patients \eqn{n_k} in the subgroup
 level.
-\item \code{events}: integer, number of events \eqn{e_k} in the subgroup level.
+\item \code{events}: integer, number of events \eqn{e_k} in the subgroup level,
+or \code{NA} if \code{events} is \code{NULL}.
 \item \code{hazard_ratio}: numeric, assumed hazard ratio
 \eqn{\exp(\beta_k)} of treatment versus control in the subgroup
 level.
@@ -80,8 +84,11 @@ Likewise, the event counts must have the same total for every
 subgroup variable, and each level must satisfy
 \eqn{1 \le e_k \le n_k}. See the "Event counts" section of
 \code{vignette("framing", package = "retrogroup")} for how to choose event
-counts, and \code{group_data_events()} for approximating them from
+counts, and \code{\link[=group_data_events]{group_data_events()}} for approximating them from
 confidence intervals when the publication does not report them.
+For that purpose, \code{events = NULL} skips the checks on event counts
+and sets every \code{events} value to \code{NA}. Such a summary is only valid
+input to \code{\link[=group_data_events]{group_data_events()}}. Every other function rejects it.
 }
 \examples{
   group_data_summary(
@@ -95,6 +102,7 @@ confidence intervals when the publication does not report them.
 }
 \seealso{
 Other data:
+\code{\link[=group_data_events]{group_data_events()}},
 \code{\link[=group_data_patient]{group_data_patient()}}
 }
 \concept{data}

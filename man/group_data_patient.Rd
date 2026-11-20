@@ -51,6 +51,7 @@ used by \code{retrogroup}.
 }
 \seealso{
 Other data:
+\code{\link[=group_data_events]{group_data_events()}},
 \code{\link[=group_data_summary]{group_data_summary()}}
 }
 \concept{data}

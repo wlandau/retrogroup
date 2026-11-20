@@ -221,15 +221,21 @@ assert_probability_patient <- function(patient) {
 #' @noRd
 #' @return `NULL` (invisibly). Throws an error if `summary` is invalid.
 #' @inheritParams group_analysis_probability
+#' @param events Logical, whether to check the event counts. `FALSE`
+#'   does not require an `events` column and ignores it, for
+#'   [group_data_events()].
 #' @examples
 #'   assert_probability_summary(group_example_summary())
 #'   try(assert_probability_summary(group_example_patient()))
-assert_probability_summary <- function(summary) {
+assert_probability_summary <- function(summary, events = TRUE) {
   hint <- "summary must be the output of group_data_summary()."
   if (!is.data.frame(summary)) {
     throw_error(c("summary must be a data frame.", i = hint))
   }
   columns <- c("variable", "level", "patients", "events", "hazard_ratio")
+  if (!events) {
+    columns <- setdiff(columns, "events")
+  }
   missing <- setdiff(columns, colnames(summary))
   if (length(missing)) {
     throw_error(
@@ -249,7 +255,7 @@ assert_probability_summary <- function(summary) {
       variable = "variable",
       level = "level",
       patients = "patients",
-      events = "events",
+      events = if (events) "events",
       hazard_ratio = "hazard_ratio"
     ),
     retrogroup_error = \(error) {
@@ -267,6 +273,8 @@ assert_probability_summary <- function(summary) {
 #' @return `NULL` (invisibly). Throws an error if `patient` and `summary`
 #'   are inconsistent with each other.
 #' @inheritParams group_analysis_probability
+#' @param events Logical, whether to check the total number of events.
+#'   `FALSE` skips that check, for [group_data_events()].
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -278,7 +286,7 @@ assert_probability_summary <- function(summary) {
 #'   summary <- group_example_summary()
 #'   assert_probability_joint(patient, summary)
 #'   try(assert_probability_joint(patient[1:10, ], summary))
-assert_probability_joint <- function(patient, summary) {
+assert_probability_joint <- function(patient, summary, events = TRUE) {
   variables <- unique(summary$variable)
   totals <- tapply(summary$patients, summary$variable, sum)[variables]
   if (any(totals != nrow(patient))) {
@@ -298,6 +306,9 @@ assert_probability_joint <- function(patient, summary) {
         i = message_count_adjustment()
       )
     )
+  }
+  if (!events) {
+    return(invisible())
   }
   events <- tapply(summary$events, summary$variable, sum)[variables]
   if (any(events != sum(patient$event))) {

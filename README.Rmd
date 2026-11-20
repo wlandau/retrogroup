@@ -45,6 +45,8 @@ The vignettes explain the method and check its performance:
   * [The model and posterior](https://wlandau.github.io/retrogroup/articles/model.html)
   * [Sampling subgroups](https://wlandau.github.io/retrogroup/articles/sampling.html)
   * [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html)
+* Appendix
+  * [Approximating event counts](https://wlandau.github.io/retrogroup/articles/events.html)
 * Benchmarks
   * [Sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html)
   * [Optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html)
@@ -64,7 +66,7 @@ group_example_patient()
 ```
 
 `group_example_summary()` returns subgroup statistics like the ones a publication would report.
-For each level of age, nodal status, and sex, it gives the number of patients, the number of events, and the hazard ratio of treatment versus control.
+For each level of age, nodal status, and sex, it gives the number of patients, the number of events, the hazard ratio of treatment versus control, and the 95% confidence interval of the hazard ratio.
 
 ```{r, eval = TRUE}
 group_example_summary()
@@ -93,6 +95,40 @@ summary <- group_data_summary(
   hazard_ratio = "hazard_ratio"
 )
 ```
+
+### Event counts (optional)
+
+Some publications report confidence intervals of the subgroup hazard ratios, but not the subgroup event counts.
+In that case, `group_data_events()` can approximate the event counts from the confidence bounds.
+First, call `group_data_summary()` with `events = NULL` to skip the event counts.
+
+```{r, eval = TRUE}
+summary_no_events <- group_data_summary(
+  group_example_summary(),
+  variable = "variable",
+  level = "level",
+  patients = "patients",
+  events = NULL,
+  hazard_ratio = "hazard_ratio"
+)
+```
+
+Then pass either the lower or the upper confidence bound of each hazard ratio to `group_data_events()`.
+It returns a new summary object with the approximate event counts, adjusted so that they add up to the total number of events in `patient` and do not exceed the number of patients of any level.
+
+```{r, eval = TRUE}
+summary_approximate <- group_data_events(
+  patient,
+  summary_no_events,
+  bound = group_example_summary()$upper
+)
+summary_approximate
+```
+
+The approximate event counts are close to the true counts in `summary`, but they are not exact.
+Choosing event counts is a decision about the reconstruction, so please disclose the counts used and how they were chosen.
+See [Approximating event counts](https://wlandau.github.io/retrogroup/articles/events.html) for the method.
+The rest of this example uses `summary`, which has the true event counts.
 
 ### Sampling
 

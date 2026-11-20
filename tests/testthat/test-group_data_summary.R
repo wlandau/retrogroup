@@ -31,7 +31,8 @@ test_that("group_data_summary() reproduces the example data", {
     hazard_ratio = "hazard_ratio"
   )
   expect_s3_class(x, "tbl_df")
-  expect_identical(x, data)
+  columns <- c("variable", "level", "patients", "events", "hazard_ratio")
+  expect_identical(x, data[, columns])
 })
 
 test_that("group_data_summary() has the expected structure", {
@@ -113,8 +114,31 @@ test_that("group_data_summary() validates column name arguments", {
     class = "retrogroup_error"
   )
   expect_error(
-    summary_call(events = NULL),
+    summary_call(events = 1),
     "events must be a single",
+    class = "retrogroup_error"
+  )
+})
+
+test_that("group_data_summary() skips the events with events = NULL", {
+  x <- summary_call(events = NULL)
+  expect_equal(
+    colnames(x),
+    c("variable", "level", "patients", "events", "hazard_ratio")
+  )
+  expect_identical(x$events, rep(NA_integer_, 4L))
+  expect_identical(x[, -4L], summary_call()[, -4L])
+  data <- summary_data()
+  data$events <- NULL
+  expect_identical(summary_call(data, events = NULL)$events, x$events)
+  data <- summary_data()
+  data$events <- c(0L, 100L, NA, 3L)
+  expect_identical(summary_call(data, events = NULL), x)
+  data <- summary_data()
+  data$patients[1] <- 0L
+  expect_error(
+    summary_call(data, events = NULL),
+    "strictly positive",
     class = "retrogroup_error"
   )
 })
