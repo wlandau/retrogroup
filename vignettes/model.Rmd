@@ -25,6 +25,10 @@ Our goal is to construct the posterior probability of a patient belonging to a p
 `vignette("sampling", package = "retrogroup")` uses estimates of these posterior probabilities to sample subgroup assignments for each patient.
 We begin by defining the hazard rate for a proportional hazards model, then write out the likelihood, derive the posterior probability of subgroup membership, and finally show how to estimate it.
 
+## Disclaimer
+
+The model has no prognostic effect, so the posterior probabilities governing subgroup assignments are not alone sufficient to produce subgroup variables fit for covariate adjustment. Constrained sampling and its optimization^[See `vignette("sampling", package = "retrogroup")` and `vignette("optimization", package = "retrogroup")`.] recover prognostic information by preserving the event counts within each subgroup.
+
 ## Hazard rate
 
 Along with the notation in `vignette("framing", package = "retrogroup")`, define:
@@ -143,9 +147,5 @@ In floating point arithmetic, a positive $p_{ik}$ can still be numerically indis
 Each $p_{ik}$ is available in closed form.
 Its only inputs are the survival data and the published subgroup statistics from `vignette("framing", package = "retrogroup")`, and computing it requires no iteration or model fitting.
 These $p_{ik}$ values are what `vignette("sampling", package = "retrogroup")` uses to sample subgroup assignments.
-
-## Disclaimer
-
-The model has no prognostic effect, so these posterior probabilities alone are not sufficient to produce subgroup variables fit for covariate adjustment. Constrained sampling in `vignette("sampling", package = "retrogroup")` attempts to correct for this by preserving the event counts within each subgroup.
 
 ## References

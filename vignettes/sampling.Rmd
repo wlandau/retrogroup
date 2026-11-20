@@ -26,11 +26,6 @@ Over a large number of simulations, subgroup log hazard ratios computed on the s
 However, each individual simulated dataset is subject to random variation and may not exactly match the published statistics.
 `vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and published subgroup log hazard ratios match.
 
-## Disclaimer
-
-The model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the sampled subgroup levels are not (on average) associated with the disease's natural history.
-The datasets from sampling should not be used for covariate adjustment.
-
 ## Unconstrained sampling
 
 If we treat subgroup levels as unconstrained, each $x_i$ has its own independent categorical distribution with probabilities $p_{i1}, \ldots, p_{iK}$.
@@ -41,12 +36,13 @@ x_i \sim \text{Categorical}(p_{i1}, \ldots, p_{iK})
 $$
 
 Unconstrained sampling is simple, but it does not guarantee that the resulting subgroup assignments match $n_k$, the published number of patients in each subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
-For that, we need constrained sampling.
+In addition, the model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the subgroups from unconstrained sampling are not (on average) associated with the disease's natural history and should not be used for covariate adjustment.
+To generate subgroup variables with prognostic information, we need constrained sampling.
 
 ## Constrained sampling
 
-Constrained sampling forces the sampled subgroup levels to match the published counts $n_k$ for each subgroup level $k$.
-To preserve the counts, we iterate through a random permutation of patients and assign each one to a random subgroup level with fewer than $n_k$ patients.
+Constrained sampling forces the sampled subgroup levels to match the published sample size $n_k$ and event count $e_k$ for each subgroup level $k$.
+To preserve these counts, we iterate through a random permutation of patients and assign each one to a random subgroup level with fewer than $n_k$ patients.
 
 Let $\rho_1, \ldots, \rho_n$ be a random permutation of patient indexes $1, \ldots, n$.
 Every $n_k$ is strictly positive, so every subgroup level has room for the first patient, and we draw $x_{\rho_1}$ from a categorical distribution:
@@ -55,23 +51,35 @@ $$
 x_{\rho_1} \sim \text{Categorical}(p_{{\rho_1}1}, \ldots, p_{{\rho_1}K})
 $$
 
-At arbitrary patient $\rho_j$, patients $\rho_1, \ldots, \rho_{j-1}$ have already been assigned to subgroup levels, with $n^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k)$ patients in subgroup level $k$ so far.
-We draw $x_{\rho_j}$ from a categorical distribution that excludes subgroup levels that have already reached their published counts:
+At arbitrary patient $\rho_j$, patients $\rho_1, \ldots, \rho_{j-1}$ have already been assigned to subgroup levels, with $n^*_{jk}$ patients in subgroup $k$ so far:
+
+$$
+n^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k)
+$$
+and $e^*_{jk}$ events in subgroup $k$ so far:
+
+$$
+e^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k) d_{\rho_h}
+$$
+
+We draw $x_{\rho_j}$ from a categorical distribution:
 
 $$
 x_{\rho_j} \sim \text{Categorical}(q_{{\rho_j}1}, \ldots, q_{{\rho_j}K})
 $$
 
-where:
+where probabilities $q_{{\rho_j}k}$ are normalized versions of $p_{{\rho_j}k}$ that exclude subgroup levels that have already reached their assumed counts:
 
 $$
 q_{{\rho_j}k} :=
 \begin{cases}
-\dfrac{p_{{\rho_j}k}}{\sum_{l = 1}^K I(n^*_{jl} < n_l) p_{{\rho_j}l}}, & \text{if } n^*_{jk} < n_k \\
-0, & \text{if } n^*_{jk} = n_k
+\dfrac{p_{{\rho_j}k}}{\sum_{l = 1}^K I(n^*_{jl} < n_l) I(e^*_{jl} < e_l) p_{{\rho_j}l}}, & \text{if } d_{\rho_j} = 1 \text{ and } n^*_{jk} < n_k \text{ and } e^*_{jk} < e_k \\
+0, & \text{if } d_{\rho_j} = 1 \text{ and } (n^*_{jk} = n_k \text{ or } e^*_{jk} = e_k) \\
+\dfrac{p_{{\rho_j}k}}{\sum_{l = 1}^K I(n^*_{jl} < n_l) I(n^*_{jl} - e^*_{jl} < n_l - e_l) p_{{\rho_j}l}}, & \text{if } d_{\rho_j} = 0 \text{ and } n^*_{jk} < n_k \text{ and } n^*_{jk} - e^*_{jk} < n_k - e_k \\
+0, & \text{if } d_{\rho_j} = 0 \text{ and } (n^*_{jk} = n_k \text{ or } n^*_{jk} - e^*_{jk} = n_k - e_k)
 \end{cases}
 $$
 
-We assume $\sum_{k = 1}^K n_k = n$, so at least one subgroup level has room at every step.
+We assume $\sum_{k = 1}^K n_k = n$ and $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$, so at least one subgroup level has room at every step.
 Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "retrogroup")`, so the denominator above is positive.
 This scheme guarantees the published counts, but it is only an approximate draw from independent categorical distributions conditional on those counts, because patients late in the permutation can only join subgroup levels that still have room.
