@@ -34,6 +34,7 @@ reference:
     - group_example_summary
   - title: Data
     contents:
+    - group_data_events
     - group_data_patient
     - group_data_summary
   - title: Sampling
