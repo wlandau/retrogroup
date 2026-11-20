@@ -25,11 +25,6 @@ Our goal is to construct the posterior probability of a patient belonging to a p
 `vignette("sampling", package = "retrogroup")` uses estimates of these posterior probabilities to sample subgroup assignments for each patient.
 We begin by defining the hazard rate for a proportional hazards model, then write out the likelihood, derive the posterior probability of subgroup membership, and finally show how to estimate it.
 
-## Disclaimer
-
-The model has no prognostic effect, which means the datasets from sampling (`vignette("sampling", package = "retrogroup")`) are not (on average) associated with the disease's natural history and should not be used for covariate adjustment. 
-If supplied with the standard errors of the log hazard ratios, on the other hand, the optimization methods in `vignette("optimization", package = "retrogroup")` do carry indirect prognostic information because those standard errors are associated with event counts.
-
 ## Hazard rate
 
 Along with the notation in `vignette("framing", package = "retrogroup")`, define:
@@ -37,12 +32,14 @@ Along with the notation in `vignette("framing", package = "retrogroup")`, define
 * $x_i$: the unknown subgroup level of patient $i$, a value in $1, \ldots, K$.
   `retrogroup` seeks values of $x_1, \ldots, x_n$ that are consistent with the published subgroup statistics from `vignette("framing", package = "retrogroup")`.
 * $t$ and $z$: generic time and treatment indicator (1 for treatment, 0 for control), respectively.
+* $\gamma_k$: a prognostic subgroup effect: the log hazard ratio of subgroup $k$ relative to subgroup 1 (taking $\gamma_1 = 0$).
+  These quantities are unknown, but we treat them as known throughout the vignette, and the last section gives a rough approximation.
 * $\lambda_0(t)$: the baseline hazard rate at time $t$, i.e. the hazard rate of a control patient ($z = 0$), which is the same for every subgroup level $k$.
 
 We define a proportional hazards model for the hazard rate, given a subgroup level $k$ and treatment indicator $z$:
 
 $$
-\lambda(t \mid k, z) := \lambda_0(t) \exp(\beta_k z)
+\lambda(t \mid k, z) := \lambda_0(t) \exp(\gamma_k + \beta_k z)
 $$
 
 We will also need the cumulative hazard, defined as:
@@ -54,7 +51,7 @@ $$
 which simplifies to:
 
 $$
-\Lambda(t \mid k, z) = \exp(\beta_k z) \Lambda_0(t)
+\Lambda(t \mid k, z) = \exp(\gamma_k + \beta_k z) \Lambda_0(t)
 $$
 
 where the baseline cumulative hazard is defined as:
@@ -75,7 +72,7 @@ $$
 Because $S(t \mid k, z) = \exp(-\Lambda(t \mid k, z))$, we can express the likelihood in terms of the baseline hazard rate and baseline cumulative hazard:
 
 $$
-L(x_i \mid t_i, d_i, z_i) = \left[\lambda_0(t_i) \exp(\beta_{x_i} z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\beta_{x_i} z_i))
+L(x_i \mid t_i, d_i, z_i) = \left[\lambda_0(t_i) \exp(\gamma_{x_i} + \beta_{x_i} z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\gamma_{x_i} + \beta_{x_i} z_i))
 $$
 
 This likelihood assumes that censoring is noninformative and does not depend on the subgroup level.
@@ -100,16 +97,16 @@ Every $\pi_k$ is strictly positive because `vignette("framing", package = "retro
 Substituting in expressions for the likelihood and prior:
 
 $$
-P(x_i = k \mid t_i, d_i, z_i) = \frac{\frac{n_k}{n} \left[\lambda_0(t_i) \exp(\beta_k z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\beta_k z_i))}{\sum_{l=1}^K \frac{n_l}{n} \left[\lambda_0(t_i) \exp(\beta_l z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\beta_l z_i))}
+P(x_i = k \mid t_i, d_i, z_i) = \frac{\frac{n_k}{n} \left[\lambda_0(t_i) \exp(\gamma_k + \beta_k z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\gamma_k + \beta_k z_i))}{\sum_{l=1}^K \frac{n_l}{n} \left[\lambda_0(t_i) \exp(\gamma_l + \beta_l z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\gamma_l + \beta_l z_i))}
 $$
 
 The baseline hazard rate and total sample size cancel:
 
 $$
-P(x_i = k \mid t_i, d_i, z_i) = \frac{n_k \left[\exp(\beta_k z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\beta_k z_i))}{\sum_{l=1}^K n_l \left[\exp(\beta_l z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\beta_l z_i))}
+P(x_i = k \mid t_i, d_i, z_i) = \frac{n_k \left[\exp(\gamma_k + \beta_k z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\gamma_k + \beta_k z_i))}{\sum_{l=1}^K n_l \left[\exp(\gamma_l + \beta_l z_i)\right]^{d_i} \, \exp(-\Lambda_0(t_i) \exp(\gamma_l + \beta_l z_i))}
 $$
 
-## Computation
+## Approximation of the posterior probabilities
 
 The posterior probability above depends on the baseline cumulative hazard $\Lambda_0(t)$, which is unknown.
 To estimate it, we use the control arm.
@@ -133,7 +130,7 @@ This estimator uses only the control arm events, so it gives up some precision i
 For each patient $i$ and each potential subgroup level $k$, we define a log-scale weight:
 
 $$
-w_{ik} := \log (n_k) + d_i \beta_k z_i - \hat{\Lambda}_0(t_i) \exp(\beta_k z_i)
+w_{ik} := \log (n_k) + d_i (\gamma_k + \beta_k z_i) - \hat{\Lambda}_0(t_i) \exp(\gamma_k + \beta_k z_i)
 $$
 
 We then define $p_{ik}$ as our estimate of the posterior probability $P(x_i = k \mid t_i, d_i, z_i)$, obtained by replacing $\Lambda_0(t_i)$ with $\hat{\Lambda}_0(t_i)$:
@@ -148,5 +145,46 @@ In floating point arithmetic, a positive $p_{ik}$ can still be numerically indis
 Each $p_{ik}$ is available in closed form.
 Its only inputs are the survival data and the published subgroup statistics from `vignette("framing", package = "retrogroup")`, and computing it requires no iteration or model fitting.
 These $p_{ik}$ values are what `vignette("sampling", package = "retrogroup")` uses to sample subgroup assignments.
+
+## Approximation of the prognostic effects
+
+All the above derivations assume that the prognostic effects $\gamma_k$ are known.
+These are unknown in reality, but `retrogroup` provides a rough approximation based on subgroup-level event counts and sample sizes.
+
+Let $H(t \mid k)$ denote the cumulative hazard at time $t$ of an alternative proportional hazards model with baseline cumulative hazard $H_0(t)$ and log hazard ratio $\gamma_k$.
+
+$$
+H(t \mid k) := H_0(t) \exp(\gamma_k)
+$$
+
+We use $1 - e_k/n_k$ as a rough approximation of the survival probability assuming type I censoring at a time $\tau$ common to all subgroups (@klein2003).
+This rough survival probability can be expressed in terms of the cumulative hazard function:
+
+$$
+\exp(-H(\tau \mid k)) \approx 1 - e_k/n_k
+$$
+which simplifies to:
+
+$$
+H(\tau \mid k) \approx -\log(1 - e_k/n_k)
+$$
+
+so the ratio of the cumulative hazard of subgroup $k$ to that of subgroup 1 is roughly:
+
+$$
+\frac{H(\tau \mid k)}{H(\tau \mid 1)} \approx \frac{\log(1 - e_k/n_k)}{\log(1 - e_1/n_1)}
+$$
+
+Recalling that $\gamma_1 = 0$, this same ratio simplifies to:
+
+$$
+\frac{H(\tau \mid k)}{H(\tau \mid 1)} = \frac{H_0(\tau) \exp(\gamma_k)}{H_0(\tau) \exp(\gamma_1)} = \frac{\exp(\gamma_k)}{\exp(0)} = \exp(\gamma_k)
+$$
+
+Equating the two expressions for the ratio of cumulative hazards and taking the log gives:
+
+$$
+\gamma_k \approx \log \left( \frac{\log(1 - e_k/n_k)}{\log(1 - e_1/n_1)} \right)
+$$
 
 ## References
