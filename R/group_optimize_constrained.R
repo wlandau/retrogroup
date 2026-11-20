@@ -41,6 +41,13 @@
 #'   [group_sample_unconstrained()] to optimize without the count
 #'   constraint.
 #'
+#'   The loss only targets the hazard ratios of treatment versus control.
+#'   The preserved event counts carry some general prognostic information,
+#'   but the timing of events within each subgroup level is not reproduced
+#'   from the original data, so some prognostic information is lost. The
+#'   statistician who uses the optimized data in an analysis, for example
+#'   for covariate adjustment, is responsible for the consequences.
+#'
 #'   In addition to the requirements of [group_analysis_probability()],
 #'   `patient` must have one column per subgroup variable in `summary`,
 #'   named after the subgroup variable, with no missing values and only the

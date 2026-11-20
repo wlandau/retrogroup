@@ -148,7 +148,9 @@ Each sampled dataset is one random draw, so its subgroup hazard ratios differ so
 Across many draws, however, they match the published hazard ratios on average.
 The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
 
-The model has no prognostic effect, so sampled subgroup levels are not (on average) associated with the disease's natural history, and sampled datasets should not be used for covariate adjustment.
+The model has no prognostic effect, so unconstrained sampled subgroup levels are not (on average) associated with the disease's natural history, and they should not be used for covariate adjustment.
+Constrained sampling preserves the number of events in each subgroup level, which carries some general prognostic information.
+However, it does not reproduce the timing of events within the subgroup levels of the original data, so some prognostic information is lost.
 
 ### Optimization
 
@@ -173,7 +175,8 @@ The optimized dataset matches the published patient counts, event counts and haz
 summary
 ```
 
-Optimization targets only the hazard ratios.
-The statistician running the analyses should investigate any prognostic information in optimized datasets before using them for covariate adjustment.
+Optimization targets only the hazard ratios of treatment versus control.
+Constrained optimization keeps the event counts of constrained sampling, but like constrained sampling, it does not reproduce the timing of events within the subgroup levels of the original data.
+A reconstructed dataset is not the original data, and the statistician who uses it in an analysis, for example for covariate adjustment, is responsible for the consequences.
 
 See [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html) for the method and the [optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html) for its performance.

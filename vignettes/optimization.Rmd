@@ -73,7 +73,10 @@ Each iteration needs $K$ model fits (step 2).
 Constrained sampling ensures that the observed numbers of patients and events in each subgroup level match the assumed subgroup counts $n_1, \ldots, n_K$ and the assumed subgroup event counts $e_1, \ldots, e_K$.
 The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed hazard ratios while maintaining the assumed subgroup counts and event counts.
 Both sets of counts are invariant because each reassignment is a swap between subgroup levels of two different patients with the same event status.
-The resulting subgroup variables carry prognostic information only through the event counts, which do not capture the timing of events, so the statistician running the analyses should investigate this information before using optimized datasets for covariate adjustment.
+The resulting subgroup variables carry some general prognostic information through the event counts.
+However, the loss only targets the hazard ratios of treatment versus control, and the event counts do not capture the timing of events.
+The timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
+The statistician who uses an optimized dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.
 
 Let $x^{(i \leftrightarrow j)}$ denote the assignments that agree with $x$ except that patients $i$ and $j$ have exchanged subgroup levels.
 Each iteration:

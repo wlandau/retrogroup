@@ -27,7 +27,8 @@ We begin by defining the hazard rate for a proportional hazards model, then writ
 ## Disclaimer
 
 The model has no prognostic effect, so the posterior probabilities governing subgroup assignments are not alone sufficient to produce subgroup variables fit for covariate adjustment.
-Constrained sampling and its optimization^[See `vignette("sampling", package = "retrogroup")` and `vignette("optimization", package = "retrogroup")`.] recover prognostic information by preserving the event counts within each subgroup.
+Constrained sampling and its optimization^[See `vignette("sampling", package = "retrogroup")` and `vignette("optimization", package = "retrogroup")`.] recover some general prognostic information by preserving the event counts within each subgroup.
+They do not reproduce the timing of events within the subgroups of the original data, however, so some prognostic information is still lost.
 
 ## Hazard rate
 

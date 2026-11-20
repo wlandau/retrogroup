@@ -27,6 +27,12 @@
 #'   [group_sample_unconstrained()] for independent draws without the
 #'   count constraint.
 #'
+#'   The event counts carry some general prognostic information, but the
+#'   timing of events within each subgroup level is not reproduced from
+#'   the original data, so some prognostic information is lost. The
+#'   statistician who uses the sampled data in an analysis, for example
+#'   for covariate adjustment, is responsible for the consequences.
+#'
 #'   Sampling uses R's random number generator. Call [set.seed()]
 #'   beforehand for reproducible results.
 #' @return A tibble with one row per patient, in the same order as the
