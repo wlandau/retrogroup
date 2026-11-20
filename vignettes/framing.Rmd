@@ -120,24 +120,65 @@ age <- summary[summary$variable == "age", ]
 For the age subgroup variable above, we have $K = 2$ with levels $k = 1$ for under 60 years and $k = 2$ for 60 years or over.
 And we have $n_1 = `r age$patients[1]`$, $n_2 = `r age$patients[2]`$, $e_1 = `r age$events[1]`$, $e_2 = `r age$events[2]`$, $\exp(\beta_1) = `r format_number(age$hazard_ratio[1])`$, and $\exp(\beta_2) = `r format_number(age$hazard_ratio[2])`$.
 
+### Sample sizes
+
 We assume $n = \sum_{k = 1}^K n_k$: in other words, the sum of the subgroup counts equals the total number of patients.
 Each $n_k$ should be strictly positive: unrepresented subgroup levels must be excluded from the data reconstruction.
-Likewise, we assume $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$: the sum of the subgroup event counts equals the total number of events in the patient-level data.
-Each $e_k$ must not exceed $n_k$.
 
 Strictly speaking, $n_k$ is the number of patients assigned to level $k$ of the reconstructed subgroup variable.
 Published subgroup counts are the natural starting point, but they do not always add up to the total number of patients in the study, for example because of missing subgroup data or reporting errors.
 In that case, choosing values of $n_k$ that satisfy $n = \sum_{k = 1}^K n_k$ is a decision about the reconstruction, not an attempt to recover the true counts from the clinical study.
 Likewise, if the publication does not report the $n_k$ values, a reasonable approach is to supply roughly equal counts across levels, or to try several configurations in a sensitivity analysis.
+In all cases, any downstream subgroup analyses should explicitly state the subgroup sample sizes used and how they were chosen.
 
-The same reasoning applies to $e_k$, the number of events among the patients assigned to level $k$ of the reconstructed subgroup variable.
+### Event counts
+
+We assume $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$: the sum of the subgroup event counts equals the total number of events in the patient-level data.
+Each $e_k$ must not exceed $n_k$.
+
 Published event counts are the natural starting point, but they may not add up to the total number of events in the patient-level data, and they may not suit values of $n_k$ that differ from the published patient counts.
 In that case, a reasonable approach is to preserve the published event fraction of each level: multiply it by the chosen $n_k$, then rescale across levels and round so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
-If the publication does not report event counts at all, derive them from the confidence intervals of the hazard ratios.
 
-In all cases, any downstream subgroup analyses should explicitly state the subgroup patient and event counts used and how they were chosen.
+If the publication does not report event counts at all, you can derive them using `group_event_counts()`, which calculates $e_k$ given:
 
-The methods in `retrogroup` focus on a single subgroup variable at a time.
-To generate multiple subgroup variables, the package applies the method separately for each variable.
+1. The assumed value of $\exp(\beta_k)$.
+2. $b_k$, either the upper or lower bound of a two-sided confidence interval of $\exp(\beta_k)$.
+3. The confidence level $1 - \alpha$ of the two-sided confidence interval.
+4. The treatment assignments $z_i$ for each patient $i = 1, \dots, n$.
+
+We can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
+
+$$
+\log(b_k) = \beta_k \pm z_{1 - \alpha/2} \sigma_k
+$$
+
+where $z_{1 - \alpha / 2}$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of $\beta_k$.
+The standard error $\sigma_k$ can be expressed as:
+
+$$
+\sigma_k = \frac{\lvert \log(b_k) - \beta_k \rvert}{z_{1 - \alpha/2}}
+$$
+
+@parmar1998 gives the following approximation of $\sigma_k$:
+
+$$
+\sigma_k \approx \frac{1}{e_k \rho (1 - \rho)} 
+$$
+
+
+where $\rho$ is the randomization ratio of the treatment arm to the control arm:
+
+$$
+\rho = \frac{\sum_{i = 1}^n z_i}{\sum_{i = 1}^n (1 - z_i)}
+$$
+
+Plugging in the two expressions for $\sigma_k$ and solving for $e_k$, we find:
+
+$$
+\begin{aligned}
+\frac{\lvert \log(b_k) - \beta_k \rvert}{z_{1 - \alpha/2}} &\approx \frac{1}{e_k \rho (1 - \rho)}\\
+e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{z_{1 - \alpha/2}}{\lvert \log(b_k) - \beta_k \rvert}
+\end{aligned}
+$$
 
 ## References
