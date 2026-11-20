@@ -97,7 +97,7 @@ summary <- group_data_summary(
 ### Sampling
 
 `group_sample_unconstrained()` estimates^[via `group_analysis_probability()`] the posterior probability that each patient belongs to each subgroup level, then samples a subgroup level independently for each patient.
-`group_sample_constrained()` is similar, but it ensures that the number of patients in each subgroup level exactly matches the respective count in `summary$patients`.
+`group_sample_constrained()` is similar, but it ensures that the number of patients and the number of events in each subgroup level exactly match `summary$patients` and `summary$events`.
 
 ```{r, eval = TRUE}
 set.seed(0)

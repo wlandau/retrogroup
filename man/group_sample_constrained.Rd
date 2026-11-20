@@ -24,8 +24,8 @@ subgroup variable in \code{summary$level}, in the same order.
 \description{
 Sample a level of each subgroup variable for each patient
 from the posterior probabilities estimated by \code{\link[=group_analysis_probability]{group_analysis_probability()}},
-such that the number of patients in each subgroup level equals the
-published number of patients in \code{summary}.
+such that the number of patients and the number of events in each
+subgroup level equal the assumed counts in \code{summary}.
 }
 \details{
 \code{group_sample_constrained()} implements the
@@ -34,15 +34,18 @@ published number of patients in \code{summary}.
 variable, it iterates through a random permutation of patients and
 draws the level of each patient from a categorical distribution with
 probabilities proportional to the \eqn{p_{ik}} from
-\code{\link[=group_analysis_probability]{group_analysis_probability()}}, restricted to the subgroup levels that have
-not yet reached their published counts. All the requirements of
+\code{\link[=group_analysis_probability]{group_analysis_probability()}}, restricted to the subgroup levels that
+still have room for a patient with that patient's event status. Each
+level has \eqn{e_k} slots for patients with events and
+\eqn{n_k - e_k} slots for patients without events. All the
+requirements of
 \code{\link[=group_analysis_probability]{group_analysis_probability()}} on \code{patient} and \code{summary} apply. In addition,
 no subgroup variable in \code{summary} may have the same name as a column
 of \code{patient}.
 
-The sampled number of patients in each subgroup level always equals
-the published number of patients in \code{summary}. However, the result
-is only an approximate draw from independent categorical
+The sampled number of patients and number of events in each subgroup
+level always equal \code{summary$patients} and \code{summary$events}. However,
+the result is only an approximate draw from independent categorical
 distributions conditional on those counts. Use
 \code{\link[=group_sample_unconstrained]{group_sample_unconstrained()}} for independent draws without the
 count constraint.
@@ -70,7 +73,8 @@ beforehand for reproducible results.
   sample <- group_sample_constrained(patient, summary)
   sample
   table(sample$age)
-  summary[summary$variable == "age", c("level", "patients")]
+  tapply(sample$event, sample$age, sum)
+  summary[summary$variable == "age", c("level", "patients", "events")]
 }
 \seealso{
 Other sampling:

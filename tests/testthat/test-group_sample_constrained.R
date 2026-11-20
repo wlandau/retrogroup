@@ -62,14 +62,64 @@ test_that("group_sample_constrained() preserves subgroup counts", {
   }
 })
 
+test_that("group_sample_constrained() preserves subgroup event counts", {
+  set.seed(0)
+  for (data in list(probability_example(), probability_small())) {
+    for (rep in seq_len(200L)) {
+      x <- group_sample_constrained(data$patient, data$summary)
+      for (variable in unique(data$summary$variable)) {
+        rows <- data$summary$variable == variable
+        levels <- data$summary$level[rows]
+        values <- factor(x[[variable]], levels = levels)
+        expect_identical(
+          as.integer(table(values)),
+          data$summary$patients[rows]
+        )
+        expect_identical(
+          as.integer(tapply(x$event, values, sum, default = 0L)),
+          data$summary$events[rows]
+        )
+      }
+    }
+  }
+})
+
 test_that("sample_constrained_variable() preserves counts", {
   set.seed(0)
   p <- matrix(stats::runif(300L), 100L, 3L)
   p <- p / rowSums(p)
   n <- c(17L, 50L, 33L)
+  e <- c(5L, 30L, 10L)
   for (rep in seq_len(50L)) {
-    index <- retrogroup:::sample_constrained_variable(p, n)
+    d <- sample(rep(c(1L, 0L), c(sum(e), sum(n) - sum(e))))
+    index <- retrogroup:::sample_constrained_variable(p, n, e, d)
     expect_identical(tabulate(index, nbins = 3L), n)
+    expect_identical(tabulate(index[d == 1L], nbins = 3L), e)
+  }
+})
+
+test_that("sample_constrained_variable() never gets stuck", {
+  # Random configurations, including e_k = n_k and e_k = 0 or 1, with
+  # probabilities that push patients toward levels with few slots.
+  set.seed(0)
+  for (rep in seq_len(500L)) {
+    K <- sample(2:5, 1L)
+    n <- sample.int(8L, K, replace = TRUE)
+    e <- vapply(n, \(n_k) sample(0:n_k, 1L), integer(1L))
+    e[1L] <- n[1L]
+    if (K > 2L) e[2L] <- min(1L, n[2L])
+    N <- sum(n)
+    d <- sample(rep(c(1L, 0L), c(sum(e), N - sum(e))))
+    epsilon <- 1e-7
+    favorite <- ifelse(d == 1L, which.min(replace(e, e == 0L, Inf)), K)
+    p <- matrix(epsilon, N, K)
+    p[cbind(seq_len(N), favorite)] <- 1
+    p <- p / rowSums(p)
+    index <- retrogroup:::sample_constrained_variable(p, n, e, d)
+    expect_false(anyNA(index))
+    expect_true(all(index %in% seq_len(K)))
+    expect_identical(tabulate(index, nbins = K), n)
+    expect_identical(tabulate(index[d == 1L], nbins = K), e)
   }
 })
 
@@ -78,9 +128,12 @@ test_that("sample_constrained_variable() handles extreme probabilities", {
   epsilon <- 1e-7
   p <- matrix(c(1 - 2 * epsilon, epsilon, epsilon), 1000L, 3L, byrow = TRUE)
   n <- c(10L, 490L, 500L)
+  e <- c(10L, 1L, 289L)
   for (rep in seq_len(10L)) {
-    index <- retrogroup:::sample_constrained_variable(p, n)
+    d <- sample(rep(c(1L, 0L), c(sum(e), sum(n) - sum(e))))
+    index <- retrogroup:::sample_constrained_variable(p, n, e, d)
     expect_identical(tabulate(index, nbins = 3L), n)
+    expect_identical(tabulate(index[d == 1L], nbins = 3L), e)
   }
 })
 
@@ -94,9 +147,11 @@ test_that("sample_constrained_variable() follows the probabilities", {
   )
   n <- c(50L, 50L, 50L)
   truth <- rep(1:3, each = 50L)
+  d <- rep(rep(c(1L, 0L), c(20L, 30L)), 3L)
+  e <- c(20L, 20L, 20L)
   agreement <- replicate(
     20L,
-    mean(retrogroup:::sample_constrained_variable(p, n) == truth)
+    mean(retrogroup:::sample_constrained_variable(p, n, e, d) == truth)
   )
   expect_gt(mean(agreement), 0.9)
 })

@@ -105,7 +105,7 @@ summary <- group_data_summary(
 ### Sampling
 
 `group_sample_unconstrained()` estimates[^1] the posterior probability that each patient belongs to each subgroup level, then samples a subgroup level independently for each patient.
-`group_sample_constrained()` is similar, but it ensures that the number of patients in each subgroup level exactly matches the respective count in `summary$patients`.
+`group_sample_constrained()` is similar, but it ensures that the number of patients and the number of events in each subgroup level exactly match `summary$patients` and `summary$events`.
 
 ``` r
 set.seed(0)
@@ -118,10 +118,10 @@ sample
 #>    treatment  time event age        node4 sex   
 #>        <int> <dbl> <int> <fct>      <fct> <fct> 
 #>  1         1  1521     1 60 or over no    male  
-#>  2         1  3087     0 under 60   yes   female
+#>  2         1  3087     0 under 60   no    female
 #>  3         0   963     1 under 60   no    male  
 #>  4         1   293     1 60 or over no    male  
-#>  5         0   659     1 60 or over no    male  
+#>  5         0   659     1 60 or over yes   male  
 #>  6         1  1767     1 under 60   no    male  
 #>  7         0  3192     0 60 or over yes   female
 #>  8         1  3308     0 60 or over no    female
@@ -134,7 +134,7 @@ Each sampled dataset is one random draw, so its subgroup hazard ratios differ so
 Across many draws, however, they match the published hazard ratios on average.
 The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
 
-The model has no prognostic effect, so sampled subgroup levels are not (on average) associated with the disease's natural history, and sampled datasets should not be used for covariate adjustment.
+The model has no prognostic effect, so sampled subgroup levels are not (on average) associated with the disease’s natural history, and sampled datasets should not be used for covariate adjustment.
 
 ### Optimization
 
@@ -154,12 +154,12 @@ group_analysis_summary(optimized)
 #> # A tibble: 6 × 5
 #>   variable level      patients events hazard_ratio
 #>   <chr>    <chr>         <int>  <int>        <dbl>
-#> 1 age      under 60        280    137        0.845
-#> 2 age      60 or over      339    154        0.579
-#> 3 node4    no              453    206        0.660
-#> 4 node4    yes             166     85        0.732
-#> 5 sex      female          312    159        0.863
-#> 6 sex      male            307    132        0.520
+#> 1 age      under 60        280    130        0.844
+#> 2 age      60 or over      339    161        0.579
+#> 3 node4    no              453    184        0.659
+#> 4 node4    yes             166    107        0.731
+#> 5 sex      female          312    157        0.862
+#> 6 sex      male            307    134        0.519
 ```
 
 The optimized dataset matches the published patient counts and hazard ratios in `summary`.
