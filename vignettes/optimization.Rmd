@@ -42,28 +42,24 @@ The loss function measures the distance between the published subgroup statistic
 
 To get the observed statistics for subgroup level $k$, we fit a Cox proportional hazards model to the patients currently assigned to that level, $\{i : x_i = k\}$, with treatment $z_i$ as the only covariate.
 The model is fit by partial likelihood, which leaves the baseline hazard unspecified [@cox1972; @cox1975], as in `survival::coxph()`.
-Let $\hat\beta_k(x)$ be the estimated log hazard ratio of treatment versus control and $\hat\sigma_k(x)$ its standard error.
+Let $\hat\beta_k(x)$ be the estimated log hazard ratio of treatment versus control.
 
-If the publication reports only log hazard ratios, the loss is the squared Euclidean distance between observed and published log hazard ratios:
-
-$$
-\Delta(x) = \sum_{k = 1}^K \left( \hat\beta_k(x) - \beta_k \right)^2
-$$
-
-If the standard errors $\sigma_k$ of the published log hazard ratios from `vignette("framing", package = "retrogroup")` are also available, the loss includes them:
+The loss is the root squared Euclidean distance between observed and target hazard ratios:
 
 $$
-\Delta(x) = \sum_{k = 1}^K \left[ \left( \hat\beta_k(x) - \beta_k \right)^2 + \left( \hat\sigma_k(x) - \sigma_k \right)^2 \right]
+\Delta(x) = \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat\beta_k(x)\right) - \exp \left (\beta_k\right) \right)^2}
 $$
 
-The standard error depends mostly on the number of events in each arm, so matching it steers the event counts in each subgroup level toward those behind the published statistics.
+The square root puts the user-specified tolerance on the same scale as the linear hazard ratio.
 
 If the model cannot be fit for some subgroup level, for example because the level is empty or one of its arms has no events, we set $\Delta(x) = \infty$.
 
 ## Optimization for unconstrained sampling
 
-Unconstrained sampling draws subgroup levels independently, and we expect the observed number of patients in each subgroup level to deviate from the published subgroup counts $n_1, \ldots, n_K$.
-The optimization does not preserve the counts either: each change is a flip, which reassigns one patient to a different subgroup level, independently of the other patients.
+Unconstrained sampling draws subgroup levels independently.
+We expect the observed number of patients in each subgroup level to deviate from the target subgroup counts $n_1, \ldots, n_K$. Likewise with the event counts $e_1, \ldots, e_K$.
+So although the observed subgroup level hazard ratios of an unconstrained optimized dataset may match the target hazard ratios, the subgroup variables have no prognostic information and are not suitable for covariate adjustment.
+For any prognostic value, we need constrained sampling and its optimization so the subgroup-level event counts are preserved.
 
 Let $x^{(i \to k)}$ denote the assignments that agree with $x$ except that patient $i$ belongs to subgroup level $k$.
 Each iteration:
@@ -80,14 +76,14 @@ Each iteration needs $K$ model fits (step 2).
 
 ## Optimization for constrained sampling
 
-Constrained sampling ensures that the observed number of patients in each subgroup matches the published subgroup counts $n_1, \ldots, n_K$.
+Constrained sampling ensures that the observed number of patients in each subgroup matches the target subgroup counts $n_1, \ldots, n_K$ and the target subgroup event counts $e_1, \ldots, e_K$.
 The optimization method for constrained sampling adjusts subgroup assignments to approximate the published log hazard ratios while maintaining the published subgroup counts.
 Subgroup counts are invariant because each reassignment is a swap between subgroup levels of two different patients.
 
 Let $x^{(i \leftrightarrow j)}$ denote the assignments that agree with $x$ except that patients $i$ and $j$ have exchanged subgroup levels.
 Each iteration:
 
-1. Draws a pair of patients $(i, j)$ uniformly at random from the pairs with $x_i \ne x_j$, independently of previous iterations and with replacement.
+1. Draws a pair of patients $(i, j)$ uniformly at random from the pairs with $x_i \ne x_j$ and $d_i = d_j$, independently of previous iterations and with replacement.
 2. Computes the loss $\Delta(x^{(i \leftrightarrow j)})$ of the swap.
 3. Updates $x \leftarrow x^{(i \leftrightarrow j)}$ if $\Delta(x^{(i \leftrightarrow j)}) < \Delta(x)$, and otherwise leaves $x$ unchanged.
 
