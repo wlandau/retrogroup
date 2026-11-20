@@ -28,7 +28,9 @@ We define two optimization methods: one for subgroup variables produced with unc
 Both methods are the same greedy local search.
 Starting from sampled subgroup levels $x = (x_1, \ldots, x_n)$, each iteration proposes a small random change to $x$ and keeps the change only if it reduces a loss function.
 The loss function is shared.
-The methods differ only in the kind of change they propose: a flip for unconstrained sampling and a swap for constrained sampling.
+The methods differ in the moves they propose.
+The constrained method uses only swaps, which preserve the subgroup counts.
+The unconstrained method uses both flips and swaps.
 
 ## Loss function
 
@@ -58,6 +60,47 @@ The square root puts the loss, and therefore the user-specified tolerance, on th
 
 If the model cannot be fit for some subgroup level, for example because the level is empty or one of its arms has no events, we set $\Delta(x) = \infty$.
 
+## Moves
+
+Each iteration of either method takes one of two kinds of step: a flip step or a swap step.
+
+### Flip
+
+Let $x^{(i \to k)}$ denote the assignments that agree with $x$ except that patient $i$ belongs to subgroup level $k$.
+A flip step:
+
+1. Draws a patient $i$ uniformly at random from $1, \ldots, n$.
+2. Computes the counterfactual loss $\Delta(x^{(i \to k)})$ for every subgroup level $k = 1, \ldots, K$.
+3. Updates $x \leftarrow x^{(i \to k^*)}$, where $k^* := \operatorname{argmin}_k \Delta(x^{(i \to k)})$.
+
+The candidates include $x^{(i \to x_i)}$, which is just $x$ unchanged.
+If the current level ties for the minimum, the patient stays put.
+A flip step needs $K$ model fits (step 2).
+A flip moves a patient from one subgroup level to another, so it changes the number of patients in both levels and does not preserve the subgroup counts.
+
+### Swap
+
+Let $x^{(i \leftrightarrow j)}$ denote the assignments that agree with $x$ except that patients $i$ and $j$ have exchanged subgroup levels.
+A swap step:
+
+1. Draws a pair of patients $(i, j)$ uniformly at random from the pairs with $x_i \ne x_j$.
+2. Computes the loss $\Delta(x^{(i \leftrightarrow j)})$ of the swap.
+3. Updates $x \leftarrow x^{(i \leftrightarrow j)}$ if $\Delta(x^{(i \leftrightarrow j)}) < \Delta(x)$, and otherwise leaves $x$ unchanged.
+
+If no pair has $x_i \ne x_j$, no swap is possible and $x$ stays unchanged.
+A swap step needs two model fits (step 2).
+A swap exchanges two patients between subgroup levels, so it preserves the number of patients in every level.
+
+### Properties of both moves
+
+Each draw is independent of previous iterations and with replacement.
+A flip or a swap changes the patients in two subgroup levels only, so every other term of the loss carries over from the previous iteration.
+Neither move ever increases the loss.
+
+The two moves complement each other.
+Flips change the sizes and event counts of subgroup levels, and swaps make fine adjustments to the hazard ratios while the sizes stay fixed.
+A search can reach a point where no flip reduces the loss but some swap does.
+
 ## Optimization for unconstrained sampling
 
 Unconstrained sampling draws subgroup levels independently.
@@ -65,39 +108,20 @@ We expect the observed number of patients in each subgroup level to deviate from
 The loss steers the event fractions toward their assumed values, but nothing in the optimization preserves the subgroup counts.
 To preserve the subgroup counts, we need constrained sampling and its optimization.
 
-Let $x^{(i \to k)}$ denote the assignments that agree with $x$ except that patient $i$ belongs to subgroup level $k$.
-Each iteration:
-
-1. Draws a patient $i$ uniformly at random from $1, \ldots, n$, independently of previous iterations and with replacement.
-2. Computes the counterfactual loss $\Delta(x^{(i \to k)})$ for every subgroup level $k = 1, \ldots, K$.
-3. Updates $x \leftarrow x^{(i \to k^*)}$, where $k^* := \operatorname{argmin}_k \Delta(x^{(i \to k)})$.
-
-The candidates include $x^{(i \to x_i)}$, which is just $x$ unchanged, so the loss never increases.
-If the current level ties for the minimum, the patient stays put.
-
-A flip from level $x_i$ to level $k$ changes the patients in those two levels only, so every other term of the loss carries over from the previous iteration.
-Each iteration needs $K$ model fits (step 2).
+Each iteration takes a flip step with probability $1/2$ and a swap step otherwise.
+If no swap is possible, the iteration takes a flip step instead.
+With flips alone, the search often stalls at a loss well above the tolerance, even when the event counts already match their assumed values.
+In that situation, moving any single patient makes the loss worse, but exchanging two patients can still bring the hazard ratios closer to their targets without changing the subgroup sizes.
 
 ## Optimization for constrained sampling
 
 Constrained sampling ensures that the observed number of patients in each subgroup level matches the assumed subgroup counts $n_1, \ldots, n_K$.
 The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed hazard ratios and event fractions while maintaining the assumed subgroup counts.
-Subgroup counts are invariant because each reassignment is a swap between subgroup levels of two different patients.
+Every iteration takes a swap step, so the subgroup counts stay at $n_1, \ldots, n_K$.
 The event counts are only steered by the soft constraint in the loss, so they are not guaranteed to match $e_1, \ldots, e_K$.
 In addition, the timing of events within each subgroup level is not reproduced from the original data.
 We make no claims about the prognostic information of optimized subgroups, but `vignette("prognostic", package = "retrogroup")` examines it empirically.
 The statistician who uses an optimized dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.
-
-Let $x^{(i \leftrightarrow j)}$ denote the assignments that agree with $x$ except that patients $i$ and $j$ have exchanged subgroup levels.
-Each iteration:
-
-1. Draws a pair of patients $(i, j)$ uniformly at random from the pairs with $x_i \ne x_j$, independently of previous iterations and with replacement.
-2. Computes the loss $\Delta(x^{(i \leftrightarrow j)})$ of the swap.
-3. Updates $x \leftarrow x^{(i \leftrightarrow j)}$ if $\Delta(x^{(i \leftrightarrow j)}) < \Delta(x)$, and otherwise leaves $x$ unchanged.
-
-As with flips, the loss never increases.
-If no pair has $x_i \ne x_j$, no swap is possible and $x$ stays unchanged.
-A swap changes the patients in levels $x_i$ and $x_j$ only, so an iteration needs two model fits.
 
 ## Stopping
 
@@ -107,8 +131,8 @@ Since $\left|\exp(\hat{\beta}_k(x)) - \exp(\beta_k)\right| \le \Delta(x)$ and $\
 The default tolerance of $10^{-3}$ is much finer than the two decimal places hazard ratios are usually published with.
 However, the event fraction of level $k$ moves in steps of roughly $1 / n_k$, and the hazard ratio and event fraction terms may pull in different directions, so a small tolerance may be unreachable, in which case the search runs until the maximum number of iterations.
 The loss is non-increasing and bounded below by zero, so it converges.
-The search is greedy, however, so it may settle in a local minimum where no single flip or swap improves the loss.
-In particular, if the starting loss is infinite and no single flip or swap makes every model estimable, the search cannot make progress.
+The search is greedy, however, so it may settle in a local minimum where no available move improves the loss: no flip or swap for unconstrained sampling, and no swap for constrained sampling.
+In particular, if the starting loss is infinite and no available move makes every model estimable, the search cannot make progress.
 Rerunning from freshly sampled subgroup levels gives a different starting point.
 
 ## References
