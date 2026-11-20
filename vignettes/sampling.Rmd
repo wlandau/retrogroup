@@ -24,7 +24,7 @@ This vignette explains a method to sample subgroup levels $x_1, \ldots, x_n$ giv
 
 Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should match the assumed hazard ratios on average.
 However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
-`vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and assumed subgroup log hazard ratios match.
+`vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and assumed subgroup hazard ratios match.
 
 ## Unconstrained sampling
 

@@ -65,22 +65,22 @@ Rendered on `r format(Sys.Date())` with `retrogroup` `r format(packageVersion("r
 
 ## Purpose
 
-`vignette("sampling", package = "retrogroup")` claims that sampled datasets reproduce the subgroup log hazard ratios on average.
-This vignette checks that claim for `group_sample_unconstrained()` and `group_sample_constrained()`, and it also checks how well the sampled datasets reproduce the standard errors of the log hazard ratios.
+`vignette("sampling", package = "retrogroup")` claims that sampled datasets reproduce the subgroup hazard ratios on average.
+This vignette checks that claim for `group_sample_unconstrained()` and `group_sample_constrained()`, and it also checks how well the sampled datasets reproduce the standard errors of the hazard ratios.
 
 ## Method
 
 Each benchmark starts from a patient-level dataset whose true subgroups are known.
-For each subgroup level, `group_analysis_summary()` fits the Cox model `survival::coxph(Surv(time, event) ~ treatment)` to the patients in that level, and the estimated log hazard ratio is the target for that level.
+For each subgroup level, `group_analysis_summary()` fits the Cox model `survival::coxph(Surv(time, event) ~ treatment)` to the patients in that level, and the estimated hazard ratio is the target for that level.
 We then hide the true subgroups and give the sampler only the summary statistics.
 The sampler imputes the subgroups, and `group_analysis_summary()` fits the same Cox model to the patients in each imputed level.
-Over many sampled datasets, the mean log hazard ratio in each imputed level should match its target.
+Over many sampled datasets, the mean hazard ratio in each imputed level should match its target.
 
 We run two versions of this experiment:
 
-1. **Colon cancer example.** The 619 patients of `group_example_patient()` with the target log hazard ratios in `group_example_summary()`.
+1. **Colon cancer example.** The 619 patients of `group_example_patient()` with the target hazard ratios in `group_example_summary()`.
    These are real data, so this example shows how the samplers perform in a realistic setting where the proportional hazards model behind `group_analysis_probability()` may not hold exactly.
-2. **Simulated example.** Datasets of `r simulated_patients` patients each, with one subgroup variable of three levels, log hazard ratios $(-0.8, 0, 0.5)$, and prevalences $(0.3, 0.3, 0.4)$.
+2. **Simulated example.** Datasets of `r simulated_patients` patients each, with one subgroup variable of three levels, hazard ratios $(-0.8, 0, 0.5)$, and prevalences $(0.3, 0.3, 0.4)$.
    The data-generating model agrees with the model that `group_analysis_probability()` uses for the subgroup probabilities, so this example shows how the samplers perform when that model is correct.
    Any remaining difference from the targets is due to the samplers, not to model misspecification.
 
@@ -94,7 +94,7 @@ samplers <- list(
 )
 
 quantities <- c(
-  "Log hazard ratio" = "log_hazard_ratio",
+  "hazard ratio" = "log_hazard_ratio",
   "Standard error" = "standard_error"
 )
 
@@ -183,7 +183,7 @@ format_number <- function(x) {
 }
 
 show_table <- function(x) {
-  hr <- x[x$quantity == "Log hazard ratio", ]
+  hr <- x[x$quantity == "hazard ratio", ]
   se <- x[x$quantity == "Standard error", ]
   knitr::kable(
     data.frame(
@@ -249,7 +249,7 @@ colon_results <- benchmark(list(colon), reps = colon_reps)
 show_table(colon_results)
 ```
 
-```{r colon-plot, echo = FALSE, fig.height = 5, fig.alt = "Grid of dot-and-interval panels. Columns are the log hazard ratio and its standard error, rows are the samplers, and each panel has one horizontal interval per colon subgroup level, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Colon cancer example: estimate minus target for each subgroup level, quantity, and sampler. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
+```{r colon-plot, echo = FALSE, fig.height = 5, fig.alt = "Grid of dot-and-interval panels. Columns are the hazard ratio and its standard error, rows are the samplers, and each panel has one horizontal interval per colon subgroup level, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Colon cancer example: estimate minus target for each subgroup level, quantity, and sampler. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
 show_plot(colon_results)
 ```
 
@@ -272,6 +272,6 @@ simulated_results <- benchmark(simulated, reps = simulated_reps)
 show_table(simulated_results)
 ```
 
-```{r simulated-plot, echo = FALSE, fig.alt = "Grid of dot-and-interval panels. Columns are the log hazard ratio and its standard error, rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Simulated example: estimate minus target for each subgroup level, quantity, and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
+```{r simulated-plot, echo = FALSE, fig.alt = "Grid of dot-and-interval panels. Columns are the hazard ratio and its standard error, rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Simulated example: estimate minus target for each subgroup level, quantity, and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
 show_plot(simulated_results)
 ```

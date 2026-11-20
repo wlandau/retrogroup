@@ -68,7 +68,7 @@ Rendered on `r format(Sys.Date())` with `retrogroup` `r format(packageVersion("r
 This vignette tests that claim by simulation for `group_optimize_unconstrained()` and `group_optimize_constrained()`, with and without assumed standard errors.
 For each optimized dataset, it reports:
 
-- how closely the log hazard ratios match their targets,
+- how closely the hazard ratios match their targets,
 - how closely the standard errors match their targets, including when the optimizer never sees them,
 - how long optimization takes, and
 - how often optimization stops before the loss falls below the tolerance.
@@ -91,12 +91,12 @@ Each replication of each method does the following:
 1. **Ground truth.** Draw a sampled dataset from the colon cancer patients and the colon cancer summary statistics with the method's sampler.
    Its subgroups are the ground truth of this replication.
 2. **Targets.** Compute the summary statistics of the ground truth dataset with `group_analysis_summary()`, which fits the Cox model `survival::coxph(Surv(time, event) ~ treatment)` to the patients in each subgroup level.
-   The log hazard ratio and standard error of each level are the targets.
+   The hazard ratio and standard error of each level are the targets.
 3. **Starting point.** Discard the ground truth subgroups, and draw a new sampled dataset from the colon cancer patients and the targets with the same sampler.
    The sampler sees the targets but never the ground truth subgroups.
 4. **Optimization.** Optimize the starting point twice, once in each standard error scenario:
-   - **Standard errors available.** The optimizer sees the target log hazard ratios and standard errors.
-   - **Standard errors unavailable.** The optimizer sees only the target log hazard ratios, as when a publication reports hazard ratios without confidence intervals.
+   - **Standard errors available.** The optimizer sees the target hazard ratios and standard errors.
+   - **Standard errors unavailable.** The optimizer sees only the target hazard ratios, as when a publication reports hazard ratios without confidence intervals.
 5. **Comparison.** Compute the summary statistics of each optimized dataset with `group_analysis_summary()`, and subtract the targets.
    Also record the elapsed time of the optimizer and whether it warned.
 
@@ -145,7 +145,7 @@ scenarios <- c("Available", "Unavailable")
 
 # Display name and summary statistics column of each quantity we compare.
 quantities <- c(
-  "Log hazard ratio" = "log_hazard_ratio",
+  "hazard ratio" = "log_hazard_ratio",
   "Standard error" = "standard_error"
 )
 
@@ -304,7 +304,7 @@ show_table <- function(x) {
   x <- x$estimates
   # Rows of hr and se are in the same order because summarize_estimates()
   # sorts by method, scenario, quantity, and subgroup.
-  hr <- x[x$quantity == "Log hazard ratio", ]
+  hr <- x[x$quantity == "hazard ratio", ]
   se <- x[x$quantity == "Standard error", ]
   knitr::kable(
     data.frame(
@@ -445,7 +445,7 @@ The figure shows the same differences.
 Points are means over replications, and bars span the central 95% of replications.
 A narrow bar around zero means that each individual optimized dataset reproduces the targets of its own replication.
 
-```{r colon-plot, echo = FALSE, fig.height = 7, fig.alt = "Grid of dot-and-interval panels. Columns are the log hazard ratio and its standard error, rows are the four combinations of method and standard error scenario, and each panel has one horizontal interval per colon subgroup level, plotted as optimized estimate minus target with a vertical reference line at zero.", fig.cap = "Colon cancer example: optimized estimate minus target for each subgroup level, quantity, method, and standard error scenario. Points are means over replications, and bars span the central 95% of replications."}
+```{r colon-plot, echo = FALSE, fig.height = 7, fig.alt = "Grid of dot-and-interval panels. Columns are the hazard ratio and its standard error, rows are the four combinations of method and standard error scenario, and each panel has one horizontal interval per colon subgroup level, plotted as optimized estimate minus target with a vertical reference line at zero.", fig.cap = "Colon cancer example: optimized estimate minus target for each subgroup level, quantity, method, and standard error scenario. Points are means over replications, and bars span the central 95% of replications."}
 show_plot(colon_results)
 ```
 

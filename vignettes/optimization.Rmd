@@ -22,7 +22,7 @@ library(retrogroup)
 `vignette("sampling", package = "retrogroup")` defines methods for sampling subgroup levels based on posterior probabilities.
 Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should match the assumed hazard ratios on average.
 However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
-This vignette defines methods to refine an individual simulated dataset so that the observed subgroup log hazard ratios match the assumed log hazard ratios.
+This vignette defines methods to refine an individual simulated dataset so that the observed subgroup hazard ratios match the assumed hazard ratios.
 
 We define two optimization methods: one for subgroup variables produced with unconstrained sampling, and another for those produced with constrained sampling.
 Both methods are the same greedy local search.
@@ -71,7 +71,7 @@ Each iteration needs $K$ model fits (step 2).
 ## Optimization for constrained sampling
 
 Constrained sampling ensures that the observed numbers of patients and events in each subgroup level match the assumed subgroup counts $n_1, \ldots, n_K$ and the assumed subgroup event counts $e_1, \ldots, e_K$.
-The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed log hazard ratios while maintaining the assumed subgroup counts and event counts.
+The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed hazard ratios while maintaining the assumed subgroup counts and event counts.
 Both sets of counts are invariant because each reassignment is a swap between subgroup levels of two different patients with the same event status.
 The resulting subgroup variables carry prognostic information only through the event counts, which do not capture the timing of events, so the statistician running the analyses should investigate this information before using optimized datasets for covariate adjustment.
 
