@@ -3,7 +3,7 @@ title: "Approximating event counts using confidence intervals of published hazar
 output: rmarkdown::html_vignette
 bibliography: ../inst/bibliography.bib
 vignette: >
-  %\VignetteIndexEntry{events}
+  %\VignetteIndexEntry{Approximating event counts using confidence intervals of published hazard ratios}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 library(retrogroup)
 ```
 
-The methods in this package assume the subgroup-level event counts $e_1, \dots, e_K$ are available.
+The methods in this package assume the subgroup-level event counts $e_1, \ldots, e_K$ are available.
 However, these counts are not always published in the literature.
 This appendix vignette defines a method for approximating them using published subgroup-level hazard ratios, implemented in the `group_data_events()` function.
 
@@ -28,8 +28,8 @@ The method takes the following as input:
 1. The assumed value of $\exp(\beta_k)$.
 2. $b_k$, either the upper or lower bound of a two-sided confidence interval of $\exp(\beta_k)$.
 3. The confidence level $1 - \alpha$ of the two-sided confidence interval.
-4. The treatment assignments $z_i$ for each patient $i = 1, \dots, n$.
-5. The event indicator $d_i$ for each patient $i = 1, \dots, n$.
+4. The treatment assignments $z_i$ for each patient $i = 1, \ldots, n$.
+5. The event indicator $d_i$ for each patient $i = 1, \ldots, n$.
 
 We can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
 
@@ -54,7 +54,7 @@ $$
 where $\rho$ is the proportion of patients randomized to treatment:
 
 $$
-\rho = \frac{1}{n}\sum_{i = 1}^n z_i
+\rho := \frac{1}{n}\sum_{i = 1}^n z_i
 $$
 
 Plugging in the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
