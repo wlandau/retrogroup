@@ -27,7 +27,7 @@ Throughout, it introduces concepts and notation that the other vignettes use.
 `retrogroup` takes as input:
 
 1. A patient-level survival dataset with columns for treatment, time, and event.
-2. A table with known assumed values for the hazard ratio, number of patients, and number of events for each level of a subgroup variable.
+2. A table with assumed values for the hazard ratio, number of patients, and number of events for each level of a subgroup variable.
 
 The goal is to reconstruct the subgroup variable with patient-level assignments that are consistent with an assumed set of subgroup statistics.
 Reconstructed subgroup variables become part of datasets suitable for subgroup analyses in clinical trial design and health technology assessment.
@@ -36,8 +36,8 @@ The following sections describe the structure of the survival dataset and the as
 
 ## Patient-level data
 
-We begin with a right-censored patient-level survival dataset from a randomized controlled parallel 2-arm clinical trial.
-For each patient $i = 1, \ldots, n$, the dataset has one row per patient and columns with the following values:
+We begin with a right-censored patient-level survival dataset from a randomized controlled parallel two-arm clinical trial.
+The dataset has one row for each patient $i = 1, \ldots, n$ and columns with the following values:
 
 * $z_i$: 1 if randomized to the treatment arm, 0 if randomized to the control arm.
 * $t_i$: time since randomization of the event or censoring.
@@ -59,7 +59,7 @@ patient <- group_data_patient(
 patient
 ```
 
-In practice, a dataset may come from a clinical study directly, or it may be reconstructed from published Kaplan-Meier curves and summary statistics, as in Figure 1A of @gandhi2018.
+In practice, a dataset may come from a clinical study directly, or it may be reconstructed from published Kaplan-Meier curves and summary statistics, such as the curves in Figure 1A of @gandhi2018.
 Tools like `retroglyph` [@retroglyph], KM-GPT [@zhao2025kmgpt], or `SurvdigitizeR` [@zhang2024survdigitizer] can assist in this reconstruction.
 
 ## Summary-level data
@@ -68,7 +68,7 @@ Clinical studies often look for subgroups of patients with enhanced treatment be
 A subgroup variable is categorical with two or more levels, not randomized, and not time-varying: for example, age group, smoking status, or biomarker status.
 Oncology publications often report inferential and descriptive statistics for each subgroup level, as in Figure 1B of @gandhi2018.
 
-For each level of the subgroup variable, we assume we know the estimated hazard ratio of treatment versus control, the number of patients, and the number of events.
+For each level of the subgroup variable, we assume values for the hazard ratio of treatment versus control, the number of patients, and the number of events.
 For the colon cancer trial, `group_example_summary()` provides these statistics from the patients above for subgroup variables age, more than 4 positive lymph nodes (`node4`), and sex.
 `group_data_summary()` converts them into the standardized format of `retrogroup`.
 
@@ -106,9 +106,8 @@ knitr::kable(
 )
 ```
 
-For a given subgroup variable with $K$ levels, define:
+For a given subgroup variable with $K$ levels indexed by $k = 1, \ldots, K$, define:
 
-* $k = 1, \ldots, K$ indexes the levels of the subgroup variable.
 * $n_k$: number of patients in subgroup level $k$.
 * $e_k$: number of events in subgroup level $k$.
 * $\exp(\beta_k)$: assumed hazard ratio of treatment versus control in subgroup level $k$, so that $\beta_k$ is the log hazard ratio.
@@ -118,28 +117,30 @@ age <- summary[summary$variable == "age", ]
 ```
 
 For the age subgroup variable above, we have $K = 2$ with levels $k = 1$ for under 60 years and $k = 2$ for 60 years or over.
-And we have $n_1 = `r age$patients[1]`$, $n_2 = `r age$patients[2]`$, $e_1 = `r age$events[1]`$, $e_2 = `r age$events[2]`$, $\exp(\beta_1) = `r format_number(age$hazard_ratio[1])`$, and $\exp(\beta_2) = `r format_number(age$hazard_ratio[2])`$.
+We have $n_1 = `r age$patients[1]`$, $n_2 = `r age$patients[2]`$, $e_1 = `r age$events[1]`$, $e_2 = `r age$events[2]`$, $\exp(\beta_1) = `r format_number(age$hazard_ratio[1])`$, and $\exp(\beta_2) = `r format_number(age$hazard_ratio[2])`$.
 
 ### Sample sizes
 
 We assume $n = \sum_{k = 1}^K n_k$: in other words, the sum of the subgroup counts equals the total number of patients.
-Each $n_k$ should be strictly positive: unrepresented subgroup levels must be excluded from the data reconstruction.
+Each $n_k$ must be strictly positive: unrepresented subgroup levels must be excluded from the data reconstruction.
 
 Strictly speaking, $n_k$ is the number of patients assigned to level $k$ of the reconstructed subgroup variable.
 Published subgroup counts are the natural starting point, but they do not always add up to the total number of patients in the study, for example because of missing subgroup data or reporting errors.
 In that case, choosing values of $n_k$ that satisfy $n = \sum_{k = 1}^K n_k$ is a decision about the reconstruction, not an attempt to recover the true counts from the clinical study.
-Likewise, if the publication does not report the $n_k$ values, a reasonable approach is to supply roughly equal counts across levels, or to try several configurations in a sensitivity analysis.
+Likewise, if the publication does not report the $n_k$ values, a reasonable approach is to choose counts based on external information about the prevalence of each level, and to try several configurations in a sensitivity analysis.
 In all cases, any downstream subgroup analyses should explicitly state the subgroup sample sizes used and how they were chosen.
 
 ### Event counts
 
 We assume $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$: the sum of the subgroup event counts equals the total number of events in the patient-level data.
-Each $e_k$ must not exceed $n_k$.
+Each $e_k$ must be at least 1, since a level with no events cannot support a hazard ratio, and must not exceed $n_k$.
+
+As with $n_k$, strictly speaking, $e_k$ is the number of events among patients assigned to level $k$ of the reconstructed subgroup variable.
 
 Published event counts are the natural starting point, but they may not add up to the total number of events in the patient-level data, and they may not suit values of $n_k$ that differ from the published patient counts.
-In that case, one of many possible approaches is to preserve the published event fraction of each level: multiply it by the chosen $n_k$, then rescale across levels and round so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
+In that case, one of many possible approaches is to preserve the published event fraction of each level: multiply it by the chosen $n_k$, then rescale across levels and round in a way that satisfies both constraints above.
 
-If the publication does not report event counts at all, you can approximate them using `group_data_events()`.
+If the publication does not report event counts at all but does report confidence intervals for the hazard ratios, `group_data_events()` can approximate the event counts.
 See `vignette("events", package = "retrogroup")` for details.
 
 In all cases, the choice is up to the judgment of the statistician, and any downstream subgroup analyses should explicitly state the subgroup event counts used and how they were chosen.

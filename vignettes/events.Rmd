@@ -21,37 +21,38 @@ library(retrogroup)
 
 The methods in this package assume the subgroup-level event counts $e_1, \ldots, e_K$ are available.
 However, these counts are not always published in the literature.
-This appendix vignette defines a method for approximating them using assumed subgroup-level hazard ratios, implemented in the `group_data_events()` function.
+This appendix vignette defines a method for approximating them using assumed subgroup-level hazard ratios and their confidence bounds, implemented in the `group_data_events()` function.
 Notation follows `vignette("framing", package = "retrogroup")`.
 
 The method takes the following as input:
 
-1. The assumed value of $\exp(\beta_k)$.
-2. $b_k$, either the upper or lower bound of a two-sided confidence interval of $\exp(\beta_k)$.
+1. The assumed hazard ratio $\exp(\beta_k)$ for each level $k = 1, \ldots, K$.
+2. $b_k$, either the upper or lower bound of a two-sided confidence interval for $\exp(\beta_k)$, for each level $k = 1, \ldots, K$.
 3. The confidence level $1 - \alpha$ of the two-sided confidence interval.
 4. The treatment assignments $z_i$ for each patient $i = 1, \ldots, n$.
 5. The event indicator $d_i$ for each patient $i = 1, \ldots, n$.
 6. The subgroup sample sizes $n_1, \ldots, n_K$.
 
-We can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
+We assume the confidence interval is a Wald interval that is symmetric on the log scale, as is standard for hazard ratios from a Cox model.
+Then we can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
 
 $$
-\log(b_k) = \beta_k \pm \Phi^{-1}(1 - \alpha / 2) \sigma_k
+\log(b_k) = \beta_k \pm q \sigma_k
 $$
 
-where $\Phi^{-1}(1 - \alpha / 2)$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of $\beta_k$.
+where $q := \Phi^{-1}(1 - \alpha / 2)$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of the log hazard ratio estimate.
+The sign is positive if $b_k$ is the upper bound and negative if $b_k$ is the lower bound.
 The variance $\sigma_k^2$ can be expressed as:
 
 $$
-\sigma_k^2 = \frac{( \log(b_k) - \beta_k )^2}{\Phi^{-1}(1 - \alpha / 2)^2}
+\sigma_k^2 = \frac{\left ( \log(b_k) - \beta_k \right )^2}{q^2}
 $$
 
-@parmar1998 gives the following approximation of variance $\sigma_k^2$:
+Following @parmar1998 and @tierney2007, we use an approximation of the variance $\sigma_k^2$ that goes back to @schoenfeld1983:
 
 $$
 \sigma_k^2 \approx \frac{1}{e_k \rho (1 - \rho)}
 $$
-
 
 where $\rho$ is the proportion of patients randomized to treatment:
 
@@ -61,17 +62,22 @@ $$
 
 The treatment allocation within each subgroup level is generally not available, so we use the overall proportion $\rho$ for every level $k$, an assumption that randomization supports.
 
-Plugging in the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
+Equating the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
 
 $$
 \begin{aligned}
-\frac{( \log(b_k) - \beta_k )^2}{\Phi^{-1}(1 - \alpha / 2)^2} &\approx \frac{1}{e_k \rho (1 - \rho)}\\
-e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{\Phi^{-1}(1 - \alpha / 2)^2}{\left (  \log(b_k) - \beta_k  \right )^2}
+\frac{\left ( \log(b_k) - \beta_k \right )^2}{q^2} &\approx \frac{1}{e_k \rho (1 - \rho)}\\
+e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{q^2}{\left ( \log(b_k) - \beta_k \right )^2}
 \end{aligned}
 $$
 
+The result is approximate for three reasons.
+First, the variance approximation is most accurate when $\beta_k$ is close to 0 and degrades for strong treatment effects.
+Second, the treatment allocation within level $k$ may differ from the overall proportion $\rho$, especially in small subgroups.
+Third, publications round hazard ratios and confidence bounds, usually to two decimal places, which can change $e_k$ noticeably when the confidence interval is narrow.
+
 These approximate event counts do not necessarily sum to the total number of events in the patient-level data, and they may exceed the subgroup sample sizes.
-So `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$ and $e_k \le n_k$ for each level $k$.
+So `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$ and $e_k \le n_k$ for each level $k$.
 This is only one of many possible ways to reconcile the counts.
 The final choice is up to the judgment of the statistician, and any downstream subgroup analyses should explicitly state the subgroup event counts used and how they were chosen.
 
