@@ -84,7 +84,7 @@ We run two versions of this experiment:
    The data-generating model agrees with the model that `group_analysis_probability()` uses for the subgroup probabilities, so this example shows how the samplers perform when that model is correct.
    Any remaining difference from the targets is due to the samplers, not to model misspecification.
 
-`group_sample_constrained()` promises that the number of patients and the number of events in each subgroup level of every sampled dataset exactly match the assumed counts in the summary.
+`group_sample_constrained()` promises that the number of patients in each subgroup level of every sampled dataset exactly matches the assumed counts in the summary.
 The benchmark checks this promise for every constrained sampled dataset, and it stops with an error if any count differs, so this vignette only renders if every constrained sampled dataset matches.
 
 Each experiment reports a table of targets, means over the sampled datasets, and their differences (mean minus target).
@@ -96,25 +96,22 @@ samplers <- list(
   Constrained = group_sample_constrained
 )
 
-# Samplers that must reproduce the assumed counts of patients and events.
+# Samplers that must reproduce the assumed counts of patients.
 constrained <- c(Unconstrained = FALSE, Constrained = TRUE)
 
 quantities <- c("Hazard ratio" = "hazard_ratio")
 
-# Stop unless the number of patients and the number of events in each
+# Stop unless the number of patients in each
 # subgroup level of a sampled dataset equal the assumed counts in summary.
 # estimates has the rows of group_analysis_summary() in the order of summary,
 # with rows of NA for subgroup levels that have no patients.
 check_counts <- function(estimates, summary) {
-  matches <- identical(estimates$patients, summary$patients) &&
-    identical(estimates$events, summary$events)
+  matches <- identical(estimates$patients, summary$patients)
   if (!matches) {
     stop(
       "A constrained sampled dataset does not match the assumed counts.\n",
       "Assumed patients: ", toString(summary$patients), "\n",
-      "Sampled patients: ", toString(estimates$patients), "\n",
-      "Assumed events: ", toString(summary$events), "\n",
-      "Sampled events: ", toString(estimates$events),
+      "Sampled patients: ", toString(estimates$patients),
       call. = FALSE
     )
   }

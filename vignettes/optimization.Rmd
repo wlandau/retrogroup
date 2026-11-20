@@ -84,7 +84,8 @@ Constrained sampling ensures that the observed number of patients in each subgro
 The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed hazard ratios and event fractions while maintaining the assumed subgroup counts.
 Subgroup counts are invariant because each reassignment is a swap between subgroup levels of two different patients.
 The event counts are only steered by the soft constraint in the loss, so they are not guaranteed to match $e_1, \ldots, e_K$.
-In addition, the timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
+In addition, the timing of events within each subgroup level is not reproduced from the original data.
+We make no claims about the prognostic information of optimized subgroups, but `vignette("prognostic", package = "retrogroup")` examines it empirically.
 The statistician who uses an optimized dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.
 
 Let $x^{(i \leftrightarrow j)}$ denote the assignments that agree with $x$ except that patients $i$ and $j$ have exchanged subgroup levels.

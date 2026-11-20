@@ -87,9 +87,10 @@ constraint.
 The event fraction terms of the loss are only a soft constraint, so
 the number of events in each subgroup level is not guaranteed to
 equal \code{summary$events}. In addition, the timing of events within each
-subgroup level is not reproduced from the original data, so some
-prognostic information is lost. The
-statistician who uses the optimized data in an analysis, for example
+subgroup level is not reproduced from the original data. We make no
+claims about the prognostic information of optimized subgroups, but
+\code{vignette("prognostic", package = "retrogroup")} examines it
+empirically. The statistician who uses the optimized data in an analysis, for example
 for covariate adjustment, is responsible for the consequences.
 
 In addition to the requirements of \code{\link[=group_analysis_probability]{group_analysis_probability()}},

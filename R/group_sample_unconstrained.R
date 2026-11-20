@@ -18,6 +18,10 @@
 #'   guaranteed to equal the assumed number of patients in `summary`.
 #'   Use [group_sample_constrained()] to preserve the assumed counts.
 #'
+#'   The model behind [group_analysis_probability()] has no prognostic
+#'   effect, so the sampled subgroups carry no prognostic information and
+#'   should not be used for covariate adjustment.
+#'
 #'   Sampling uses R's random number generator. Call [set.seed()]
 #'   beforehand for reproducible results.
 #' @return A tibble with one row per patient, in the same order as the

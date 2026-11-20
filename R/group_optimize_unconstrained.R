@@ -37,7 +37,16 @@
 #'   of patients and the number of events in each subgroup level are not
 #'   guaranteed to equal the assumed counts in `summary`. Use
 #'   [group_optimize_constrained()] on the output of
-#'   [group_sample_constrained()] to preserve the assumed counts.
+#'   [group_sample_constrained()] to preserve the assumed number of
+#'   patients.
+#'
+#'   The timing of events within each subgroup level is not reproduced
+#'   from the original data. We make no claims about the prognostic
+#'   information of optimized subgroups, but
+#'   `vignette("prognostic", package = "retrogroup")` examines it
+#'   empirically. The statistician who uses the optimized data in an
+#'   analysis, for example for covariate adjustment, is responsible for
+#'   the consequences.
 #'
 #'   In addition to the requirements of [group_analysis_probability()], `patient`
 #'   must have one column per subgroup variable in `summary`, named after

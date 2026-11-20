@@ -99,7 +99,8 @@ Each replication of each method does the following:
    Also record the elapsed time of the optimizer and whether it warned.
 
 For the constrained method, the benchmark also checks the guarantees of `group_sample_constrained()` and `group_optimize_constrained()` in every replication.
-The number of patients and the number of events in each subgroup level must exactly match the colon cancer summary statistics in the ground truth, and they must exactly match the assumed counts of the targets in the starting point and in the optimized dataset.
+The number of patients in each subgroup level must exactly match the colon cancer summary statistics in the ground truth, and it must exactly match the assumed counts of the targets in the starting point and in the optimized dataset.
+The number of events is not checked, because optimization only steers it toward the target as a soft constraint.
 The benchmark stops with an error if any count differs, so this vignette only renders if every constrained dataset matches.
 
 We test two methods, each with its matching sampler in steps 1 and 3:
@@ -122,7 +123,7 @@ The optimizers fit the Cox model directly and do not use the subgroup probabilit
 ### Settings
 
 Every optimization uses tolerance = `r format(tolerance)` and at most `r format(iterations)` iterations per subgroup variable.
-The loss is the Euclidean distance between the optimized and target hazard ratios, so a loss below this tolerance means that they agree to within `r format(tolerance)` on the hazard ratio scale.
+The loss is the Euclidean distance between the optimized and target hazard ratios and event fractions, so a loss below this tolerance means that every hazard ratio and every event fraction is within `r format(tolerance)` of its target.
 
 A run stops as soon as its loss falls below the tolerance.
 A run whose loss is still above the tolerance after the maximum number of iterations stops there and throws a warning of class `"retrogroup_warning"`.
@@ -131,7 +132,7 @@ The elapsed time covers the call to the optimizer only, not sampling or the comp
 
 ```{r helpers, fold = TRUE}
 # constrained = TRUE means every sampled and optimized dataset must
-# reproduce the assumed counts of patients and events.
+# reproduce the assumed counts of patients.
 methods <- list(
   Unconstrained = list(
     sample = group_sample_unconstrained,
@@ -153,7 +154,7 @@ subgroup_label <- function(summary) {
   paste0(summary$variable, ": ", summary$level)
 }
 
-# Stop unless the number of patients and the number of events in each
+# Stop unless the number of patients in each
 # subgroup level of a dataset equal the assumed counts in summary.
 # statistics is the output of group_analysis_summary() for the dataset,
 # and name describes the dataset in the error message.
@@ -161,15 +162,12 @@ check_counts <- function(statistics, summary, name) {
   statistics <- statistics[
     match(subgroup_label(summary), subgroup_label(statistics)),
   ]
-  matches <- identical(statistics$patients, summary$patients) &&
-    identical(statistics$events, summary$events)
+  matches <- identical(statistics$patients, summary$patients)
   if (!matches) {
     stop(
       "The constrained ", name, " does not match the assumed counts.\n",
       "Assumed patients: ", toString(summary$patients), "\n",
-      "Observed patients: ", toString(statistics$patients), "\n",
-      "Assumed events: ", toString(summary$events), "\n",
-      "Observed events: ", toString(statistics$events),
+      "Observed patients: ", toString(statistics$patients),
       call. = FALSE
     )
   }

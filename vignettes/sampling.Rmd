@@ -36,7 +36,7 @@ x_i \sim \text{Categorical}(p_{i1}, \ldots, p_{iK})
 $$
 
 Unconstrained sampling is simple, but it does not guarantee that the resulting subgroup assignments match $n_k$, the assumed number of patients in each subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
-In addition, the model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the subgroups from unconstrained sampling are not (on average) associated with the disease's natural history and should not be used for covariate adjustment.
+In addition, the model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the subgroups from unconstrained sampling carry no prognostic information: they are not (on average) associated with the disease's natural history and should not be used for covariate adjustment.
 To preserve the subgroup sample sizes, we need constrained sampling.
 
 ## Constrained sampling
@@ -72,6 +72,8 @@ Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "r
 This scheme guarantees the assumed counts, but it is only an approximate draw from independent categorical distributions conditional on those counts, because patients late in the permutation can only join subgroup levels that still have room.
 
 Constrained sampling preserves the sample sizes $n_k$ but does not target the event counts $e_k$.
+Like unconstrained sampling, it draws from a model with no prognostic effect, so its subgroups carry no prognostic information and should not be used for covariate adjustment.
 The loss function in `vignette("optimization", package = "retrogroup")` steers the observed event fraction of each subgroup level toward $e_k / n_k$, but only as a soft constraint, so the event counts are not guaranteed to match.
-In addition, the timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
+In addition, the timing of events within each subgroup level is not reproduced from the original data.
+We make no claims about the prognostic information of optimized subgroups, but `vignette("prognostic", package = "retrogroup")` examines it empirically.
 The statistician who uses a reconstructed dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.

@@ -50,6 +50,7 @@ The vignettes explain the method and check its performance:
 * Benchmarks
   * [Sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html)
   * [Optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html)
+  * [Prognostic benchmarks](https://wlandau.github.io/retrogroup/articles/prognostic.html)
 
 ## Usage
 
@@ -133,7 +134,7 @@ The rest of this example uses `summary`, which has the true event counts.
 ### Sampling
 
 `group_sample_unconstrained()` estimates^[via `group_analysis_probability()`] the posterior probability that each patient belongs to each subgroup level, then samples a subgroup level independently for each patient.
-`group_sample_constrained()` is similar, but it ensures that the number of patients and the number of events in each subgroup level exactly match `summary$patients` and `summary$events`.
+`group_sample_constrained()` is similar, but it ensures that the number of patients in each subgroup level exactly matches `summary$patients`.
 
 ```{r, eval = TRUE}
 set.seed(0)
@@ -148,15 +149,14 @@ Each sampled dataset is one random draw, so its subgroup hazard ratios differ so
 Across many draws, however, they match the assumed hazard ratios on average.
 The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
 
-The model has no prognostic effect, so unconstrained sampled subgroup levels are not (on average) associated with the disease's natural history, and they should not be used for covariate adjustment.
-Constrained sampling preserves the number of events in each subgroup level, which carries some general prognostic information.
-However, it does not reproduce the timing of events within the subgroup levels of the original data, so some prognostic information is lost.
+The model has no prognostic effect, so subgroup levels from either sampler carry no prognostic information: they are not (on average) associated with the disease's natural history, and they should not be used for covariate adjustment.
 
 ### Optimization
 
-Optimization refines a single sampled dataset so that its subgroup hazard ratios match the assumed ones.
+Optimization refines a single sampled dataset so that its subgroup hazard ratios match the assumed ones and its subgroup event fractions approach the assumed ones.
 `group_optimize_unconstrained()` starts from the output of `group_sample_unconstrained()` and moves one patient at a time to the subgroup level that best reduces the discrepancy.
-`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients with the same event status, so the numbers of patients and events in each subgroup level never change.
+`group_optimize_constrained()` starts from the output of `group_sample_constrained()` and swaps the subgroup levels of pairs of patients, so the number of patients in each subgroup level never changes.
+Both optimizers steer the number of events in each subgroup level toward `summary$events`, but only as a soft constraint, so the event counts are not guaranteed to match.
 
 ```{r, eval = TRUE}
 set.seed(0)
@@ -169,14 +169,15 @@ optimized <- group_optimize_constrained(sample, summary)
 group_analysis_summary(optimized)
 ```
 
-The optimized dataset matches the assumed patient counts, event counts and hazard ratios in `summary`.
+The optimized dataset matches the assumed patient counts and hazard ratios in `summary`, and its event counts are close to the assumed ones.
 
 ```{r, eval = TRUE}
 summary
 ```
 
-Optimization targets only the hazard ratios of treatment versus control.
-Constrained optimization keeps the event counts of constrained sampling, but like constrained sampling, it does not reproduce the timing of events within the subgroup levels of the original data.
+Optimization targets the hazard ratios of treatment versus control and, as a soft constraint, the event fractions.
+It does not reproduce the timing of events within the subgroup levels of the original data.
+We make no claims about the prognostic information of optimized subgroups, but the [prognostic benchmarks](https://wlandau.github.io/retrogroup/articles/prognostic.html) examine it empirically.
 A reconstructed dataset is not the original data, and the statistician who uses it in an analysis, for example for covariate adjustment, is responsible for the consequences.
 
 See [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html) for the method and the [optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html) for its performance.

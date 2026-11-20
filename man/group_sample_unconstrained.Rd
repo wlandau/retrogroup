@@ -41,6 +41,10 @@ The sampled number of patients in each subgroup level is not
 guaranteed to equal the assumed number of patients in \code{summary}.
 Use \code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the assumed counts.
 
+The model behind \code{\link[=group_analysis_probability]{group_analysis_probability()}} has no prognostic
+effect, so the sampled subgroups carry no prognostic information and
+should not be used for covariate adjustment.
+
 Sampling uses R's random number generator. Call \code{\link[=set.seed]{set.seed()}}
 beforehand for reproducible results.
 }

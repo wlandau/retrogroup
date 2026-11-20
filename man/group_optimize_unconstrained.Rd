@@ -83,7 +83,16 @@ The search is greedy, so it may settle in a local minimum. The number
 of patients and the number of events in each subgroup level are not
 guaranteed to equal the assumed counts in \code{summary}. Use
 \code{\link[=group_optimize_constrained]{group_optimize_constrained()}} on the output of
-\code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the assumed counts.
+\code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the assumed number of
+patients.
+
+The timing of events within each subgroup level is not reproduced
+from the original data. We make no claims about the prognostic
+information of optimized subgroups, but
+\code{vignette("prognostic", package = "retrogroup")} examines it
+empirically. The statistician who uses the optimized data in an
+analysis, for example for covariate adjustment, is responsible for
+the consequences.
 
 In addition to the requirements of \code{\link[=group_analysis_probability]{group_analysis_probability()}}, \code{patient}
 must have one column per subgroup variable in \code{summary}, named after

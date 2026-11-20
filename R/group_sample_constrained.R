@@ -24,14 +24,14 @@
 #'   count constraint.
 #'
 #'   Sampling does not target the assumed event counts in
-#'   `summary$events`. The loss functions of [group_optimize_constrained()]
+#'   `summary$events`. The model behind [group_analysis_probability()] has
+#'   no prognostic effect, so the sampled subgroups carry no prognostic
+#'   information and should not be used for covariate adjustment.
+#'   The loss functions of [group_optimize_constrained()]
 #'   and [group_optimize_unconstrained()] steer the event fractions toward
 #'   `summary$events / summary$patients`, but only as a soft constraint.
-#'   In addition, the timing of events within each subgroup level is not
-#'   reproduced from the original data, so some prognostic information is
-#'   lost. The
-#'   statistician who uses the sampled data in an analysis, for example
-#'   for covariate adjustment, is responsible for the consequences.
+#'   The statistician who uses the sampled data in an analysis is
+#'   responsible for the consequences.
 #'
 #'   Sampling uses R's random number generator. Call [set.seed()]
 #'   beforehand for reproducible results.
