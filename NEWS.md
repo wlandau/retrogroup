@@ -1,4 +1,4 @@
-# retrogroup 0.0.2.9000 (development)
+# retrogroup 0.0.3
 
 ## Breaking changes
 

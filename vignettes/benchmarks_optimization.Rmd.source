@@ -89,13 +89,18 @@ Each replication of each method does the following:
 
 1. **Ground truth.** Draw a sampled dataset from the colon cancer patients and the colon cancer summary statistics with the method's sampler.
    Its subgroups are the ground truth of this replication.
-2. **Targets.** Compute the summary statistics of the ground truth dataset with `group_analysis_summary()`, which fits the Cox model `survival::coxph(Surv(time, event) ~ treatment)` to the patients in each subgroup level.
-   The hazard ratio of each level is the target.
+2. **Targets.** Compute the summary statistics of the ground truth dataset with `group_analysis_summary()`, which counts the patients and events and fits the Cox model `survival::coxph(Surv(time, event) ~ treatment)` to the patients in each subgroup level.
+   Convert them to the standard format with `group_data_summary()`.
+   The hazard ratio of each level is the target, and the numbers of patients and events of each level are the assumed counts.
 3. **Starting point.** Discard the ground truth subgroups, and draw a new sampled dataset from the colon cancer patients and the targets with the same sampler.
    The sampler sees the targets but never the ground truth subgroups.
 4. **Optimization.** Optimize the starting point toward the targets with the method's optimizer.
 5. **Comparison.** Compute the summary statistics of each optimized dataset with `group_analysis_summary()`, and subtract the targets.
    Also record the elapsed time of the optimizer and whether it warned.
+
+For the constrained method, the benchmark also checks the guarantees of `group_sample_constrained()` and `group_optimize_constrained()` in every replication.
+The number of patients and the number of events in each subgroup level must exactly match the colon cancer summary statistics in the ground truth, and they must exactly match the assumed counts of the targets in the starting point and in the optimized dataset.
+The benchmark stops with an error if any count differs, so this vignette only renders if every constrained dataset matches.
 
 We test two methods, each with its matching sampler in steps 1 and 3:
 
@@ -125,14 +130,18 @@ We count that run as warned.
 The elapsed time covers the call to the optimizer only, not sampling or the computation of summary statistics.
 
 ```{r helpers, fold = TRUE}
+# constrained = TRUE means every sampled and optimized dataset must
+# reproduce the assumed counts of patients and events.
 methods <- list(
   Unconstrained = list(
     sample = group_sample_unconstrained,
-    optimize = group_optimize_unconstrained
+    optimize = group_optimize_unconstrained,
+    constrained = FALSE
   ),
   Constrained = list(
     sample = group_sample_constrained,
-    optimize = group_optimize_constrained
+    optimize = group_optimize_constrained,
+    constrained = TRUE
   )
 )
 
@@ -142,6 +151,28 @@ quantities <- c("Hazard ratio" = "hazard_ratio")
 # One label per row of a summary statistics data frame.
 subgroup_label <- function(summary) {
   paste0(summary$variable, ": ", summary$level)
+}
+
+# Stop unless the number of patients and the number of events in each
+# subgroup level of a dataset equal the assumed counts in summary.
+# statistics is the output of group_analysis_summary() for the dataset,
+# and name describes the dataset in the error message.
+check_counts <- function(statistics, summary, name) {
+  statistics <- statistics[
+    match(subgroup_label(summary), subgroup_label(statistics)),
+  ]
+  matches <- identical(statistics$patients, summary$patients) &&
+    identical(statistics$events, summary$events)
+  if (!matches) {
+    stop(
+      "The constrained ", name, " does not match the assumed counts.\n",
+      "Assumed patients: ", toString(summary$patients), "\n",
+      "Observed patients: ", toString(statistics$patients), "\n",
+      "Assumed events: ", toString(summary$events), "\n",
+      "Observed events: ", toString(statistics$events),
+      call. = FALSE
+    )
+  }
 }
 
 # Row-bind one named element across a list of results.
@@ -191,13 +222,30 @@ replication <- function(method, colon) {
   # Step 1: ground truth.
   truth <- method$sample(colon$patient, colon$summary)
   # Step 2: targets.
-  targets <- group_analysis_summary(truth, variables)
+  truth_statistics <- group_analysis_summary(truth, variables)
+  targets <- group_data_summary(
+    truth_statistics,
+    variable = "variable",
+    level = "level",
+    patients = "patients",
+    events = "events",
+    hazard_ratio = "hazard_ratio"
+  )
   # Step 3: starting point.
   start <- method$sample(colon$patient, targets)
   # Step 4: optimization.
   run <- optimize_once(method$optimize, start, targets)
   # Step 5: comparison.
   achieved <- group_analysis_summary(run$optimized, variables)
+  if (method$constrained) {
+    check_counts(truth_statistics, colon$summary, "ground truth")
+    check_counts(
+      group_analysis_summary(start, variables),
+      targets,
+      "starting point"
+    )
+    check_counts(achieved, targets, "optimized dataset")
+  }
   list(
     estimates = compare(targets, achieved),
     runs = data.frame(warned = run$warned, seconds = run$seconds)

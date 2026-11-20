@@ -1,6 +1,6 @@
 Package: retrogroup
 Title: Reconstruct Patient-Level Subgroup Membership in Survival Data
-Version: 0.0.2.9000
+Version: 0.0.3
 Authors@R: c(
   person(
     given = c("William", "Michael"),
