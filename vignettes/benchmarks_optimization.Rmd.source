@@ -64,8 +64,8 @@ Rendered on `r format(Sys.Date())` with `retrogroup` `r format(packageVersion("r
 
 ## Purpose
 
-`vignette("optimization", package = "retrogroup")` claims that optimization refines a sampled dataset until its subgroup log hazard ratios match the published ones.
-This vignette tests that claim by simulation for `group_optimize_unconstrained()` and `group_optimize_constrained()`, with and without published standard errors.
+`vignette("optimization", package = "retrogroup")` claims that optimization refines a sampled dataset until its subgroup hazard ratios match the target ones.
+This vignette tests that claim by simulation for `group_optimize_unconstrained()` and `group_optimize_constrained()`, with and without assumed standard errors.
 For each optimized dataset, it reports:
 
 - how closely the log hazard ratios match their targets,
@@ -80,7 +80,7 @@ For each optimized dataset, it reports:
 ### Design
 
 A fair test needs targets that the optimizer can attain.
-Published statistics do not guarantee this: if an optimized dataset misses them, we cannot tell whether the optimizer failed or whether no assignment of subgroups attains them.
+Assumed statistics do not guarantee this: if an optimized dataset misses them, we cannot tell whether the optimizer failed or whether no assignment of subgroups attains them.
 So each replication creates its own targets.
 It assigns subgroups to the colon cancer patients, computes the summary statistics of that assignment, and uses those statistics as the targets.
 That assignment attains the targets exactly, so a solution with zero loss is known to exist.

@@ -27,12 +27,12 @@ Throughout, it introduces concepts and notation that the other vignettes use.
 `retrogroup` takes as input:
 
 1. A patient-level survival dataset with columns for treatment, time, and event.
-2. A published table giving the hazard ratio, number of patients, and number of events for each level of a subgroup variable.
+2. A table with known assumed values for the hazard ratio, number of patients, and number of events for each level of a subgroup variable.
 
-The goal is to reconstruct the subgroup variable with patient-level assignments that are consistent with the published subgroup statistics.
+The goal is to reconstruct the subgroup variable with patient-level assignments that are consistent with an assumed set of subgroup statistics.
 Reconstructed subgroup variables become part of datasets suitable for subgroup analyses in clinical trial design and health technology assessment.
 
-The following sections describe the structure of the survival dataset and the published subgroup statistics that `retrogroup` uses as input.
+The following sections describe the structure of the survival dataset and the assumed subgroup statistics that `retrogroup` uses as input.
 
 ## Patient-level data
 

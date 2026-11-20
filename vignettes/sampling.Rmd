@@ -22,9 +22,9 @@ library(retrogroup)
 `vignette("model", package = "retrogroup")` derives $p_{ik}$, an estimate of the posterior probability that patient $i$ belongs to subgroup level $k$ ($i = 1, \ldots, n$, $k = 1, \ldots, K$).
 This vignette explains a method to sample subgroup levels $x_1, \ldots, x_n$ given fixed posterior probability estimates $p_{ik}$.
 
-Over a large number of simulations, subgroup log hazard ratios computed on the simulated datasets should match the published log hazard ratios on average.
-However, each individual simulated dataset is subject to random variation and may not exactly match the published statistics.
-`vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and published subgroup log hazard ratios match.
+Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should match the assumed hazard ratios on average.
+However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
+`vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and assumed subgroup log hazard ratios match.
 
 ## Unconstrained sampling
 
@@ -35,13 +35,13 @@ $$
 x_i \sim \text{Categorical}(p_{i1}, \ldots, p_{iK})
 $$
 
-Unconstrained sampling is simple, but it does not guarantee that the resulting subgroup assignments match $n_k$, the published number of patients in each subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
+Unconstrained sampling is simple, but it does not guarantee that the resulting subgroup assignments match $n_k$, the assumed number of patients in each subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
 In addition, the model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the subgroups from unconstrained sampling are not (on average) associated with the disease's natural history and should not be used for covariate adjustment.
 To generate subgroup variables with prognostic information, we need constrained sampling.
 
 ## Constrained sampling
 
-Constrained sampling forces the sampled subgroup levels to match the published sample size $n_k$ and event count $e_k$ for each subgroup level $k$.
+Constrained sampling forces the sampled subgroup levels to match the assumed sample size $n_k$ and event count $e_k$ for each subgroup level $k$.
 To preserve these counts, we iterate through a random permutation of patients and assign each one to a random subgroup level that still has room for a patient with that patient's event status.
 
 Let $\rho_1, \ldots, \rho_n$ be a random permutation of patient indexes $1, \ldots, n$.
@@ -62,7 +62,7 @@ $$
 x_{\rho_j} \sim \text{Categorical}(q_{{\rho_j}1}, \ldots, q_{{\rho_j}K})
 $$
 
-where probabilities $q_{{\rho_j}k}$ are normalized versions of $p_{{\rho_j}k}$ that exclude subgroup levels that have already reached their published counts:
+where probabilities $q_{{\rho_j}k}$ are normalized versions of $p_{{\rho_j}k}$ that exclude subgroup levels that have already reached their assumed counts:
 
 $$
 q_{{\rho_j}k} :=
@@ -77,4 +77,4 @@ $$
 We assume $0 \le e_k \le n_k$ for every $k$, $\sum_{k = 1}^K n_k = n$, and $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$.
 Under these assumptions, the remaining event slots across subgroup levels always equal the number of unassigned patients with events, and the remaining non-event slots always equal the number of unassigned patients without events, so at least one subgroup level has room for patient $\rho_j$ at every step.
 Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "retrogroup")`, so the denominator above is positive.
-This scheme guarantees the published counts, but it is only an approximate draw from independent categorical distributions conditional on those counts, because patients late in the permutation can only join subgroup levels that still have room.
+This scheme guarantees the assumed counts, but it is only an approximate draw from independent categorical distributions conditional on those counts, because patients late in the permutation can only join subgroup levels that still have room.

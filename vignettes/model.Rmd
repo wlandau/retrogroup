@@ -34,7 +34,7 @@ The model has no prognostic effect, so the posterior probabilities governing sub
 Along with the notation in `vignette("framing", package = "retrogroup")`, define:
 
 * $x_i$: the unknown subgroup level of patient $i$, a value in $1, \ldots, K$.
-  `retrogroup` seeks values of $x_1, \ldots, x_n$ that are consistent with the published subgroup statistics from `vignette("framing", package = "retrogroup")`.
+  `retrogroup` seeks values of $x_1, \ldots, x_n$ that are consistent with the assumed known subgroup statistics from `vignette("framing", package = "retrogroup")`.
 * $t$ and $z$: generic time and treatment indicator (1 for treatment, 0 for control), respectively.
 * $\lambda_0(t)$: the baseline hazard rate at time $t$, i.e. the hazard rate of a control patient ($z = 0$), which is the same for every subgroup level $k$.
 
@@ -88,7 +88,7 @@ $$
 P(x_i = k \mid t_i, d_i, z_i) = \frac{\pi_k L(k \mid t_i, d_i, z_i)}{\sum_{l=1}^K \pi_l L(l \mid t_i, d_i, z_i)}
 $$
 
-For the prior of subgroup level $k$, we use the published fraction of patients belonging to each subgroup level:
+For the prior of subgroup level $k$, we use the assumed fraction of patients belonging to each subgroup level:
 
 $$
 \pi_k := \frac{n_k}{n}
@@ -145,7 +145,7 @@ Every $p_{ik}$ is strictly positive: because $n_k > 0$, each $w_{ik}$ is finite,
 In floating point arithmetic, a positive $p_{ik}$ can still be numerically indistinguishable from zero, so `retrogroup` throws an error if any $p_{ik}$ is less than the square root of machine epsilon.
 
 Each $p_{ik}$ is available in closed form.
-Its only inputs are the survival data and the published subgroup statistics from `vignette("framing", package = "retrogroup")`, and computing it requires no iteration or model fitting.
+Its only inputs are the survival data and the assumed subgroup statistics from `vignette("framing", package = "retrogroup")`, and computing it requires no iteration or model fitting.
 These $p_{ik}$ values are what `vignette("sampling", package = "retrogroup")` uses to sample subgroup assignments.
 
 ## References

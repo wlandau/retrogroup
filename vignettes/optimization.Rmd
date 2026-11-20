@@ -20,9 +20,9 @@ library(retrogroup)
 ```
 
 `vignette("sampling", package = "retrogroup")` defines methods for sampling subgroup levels based on posterior probabilities.
-Over a large number of simulations, subgroup log hazard ratios computed on the simulated datasets should match the published log hazard ratios on average.
-However, each individual simulated dataset is subject to random variation and may not exactly match the published statistics.
-This vignette defines methods to refine an individual simulated dataset so that the observed subgroup log hazard ratios match the published log hazard ratios.
+Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should match the assumed hazard ratios on average.
+However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
+This vignette defines methods to refine an individual simulated dataset so that the observed subgroup log hazard ratios match the assumed log hazard ratios.
 
 We define two optimization methods: one for subgroup variables produced with unconstrained sampling, and another for those produced with constrained sampling.
 Both methods are the same greedy local search.
@@ -32,13 +32,13 @@ The methods differ only in the kind of change they propose: a flip for unconstra
 
 ## Loss function
 
-The loss function measures the distance between the published subgroup statistics and the same statistics observed under the current subgroup levels $x$.
+The loss function measures the distance between the assumed subgroup statistics and the same statistics observed under the current subgroup levels $x$.
 
 To get the observed statistics for subgroup level $k$, we fit a Cox proportional hazards model to the patients currently assigned to that level, $\{i : x_i = k\}$, with treatment $z_i$ as the only covariate.
 The model is fit by partial likelihood, which leaves the baseline hazard unspecified [@cox1972; @cox1975], as in `survival::coxph()`.
-Let $\hat\beta_k(x)$ be the estimated log hazard ratio of treatment versus control, and let $\beta_k$ be the published log hazard ratio for subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
+Let $\hat\beta_k(x)$ be the estimated log hazard ratio of treatment versus control, and let $\beta_k$ be the assumed log hazard ratio for subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
 
-The loss is the Euclidean distance between observed and published hazard ratios:
+The loss is the Euclidean distance between observed and assumed hazard ratios:
 
 $$
 \Delta(x) = \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat\beta_k(x)\right) - \exp \left (\beta_k\right) \right)^2}
@@ -51,8 +51,8 @@ If the model cannot be fit for some subgroup level, for example because the leve
 ## Optimization for unconstrained sampling
 
 Unconstrained sampling draws subgroup levels independently.
-We expect the observed number of patients in each subgroup level to deviate from the published subgroup counts $n_1, \ldots, n_K$. Likewise with the event counts $e_1, \ldots, e_K$.
-So although the observed subgroup level hazard ratios of an unconstrained optimized dataset may match the published hazard ratios, the subgroup variables are not built to carry prognostic information and are not suitable for covariate adjustment.
+We expect the observed number of patients in each subgroup level to deviate from the assumed subgroup counts $n_1, \ldots, n_K$. Likewise with the event counts $e_1, \ldots, e_K$.
+So although the observed subgroup level hazard ratios of an unconstrained optimized dataset may match the assumed hazard ratios, the subgroup variables are not built to carry prognostic information and are not suitable for covariate adjustment.
 For any prognostic value, we need constrained sampling and its optimization so the subgroup-level event counts are preserved.
 
 Let $x^{(i \to k)}$ denote the assignments that agree with $x$ except that patient $i$ belongs to subgroup level $k$.
@@ -70,8 +70,8 @@ Each iteration needs $K$ model fits (step 2).
 
 ## Optimization for constrained sampling
 
-Constrained sampling ensures that the observed numbers of patients and events in each subgroup level match the published subgroup counts $n_1, \ldots, n_K$ and the published subgroup event counts $e_1, \ldots, e_K$.
-The optimization method for constrained sampling adjusts subgroup assignments to approximate the published log hazard ratios while maintaining the published subgroup counts and event counts.
+Constrained sampling ensures that the observed numbers of patients and events in each subgroup level match the assumed subgroup counts $n_1, \ldots, n_K$ and the assumed subgroup event counts $e_1, \ldots, e_K$.
+The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed log hazard ratios while maintaining the assumed subgroup counts and event counts.
 Both sets of counts are invariant because each reassignment is a swap between subgroup levels of two different patients with the same event status.
 The resulting subgroup variables carry prognostic information only through the event counts, which do not capture the timing of events, so the statistician running the analyses should investigate this information before using optimized datasets for covariate adjustment.
 
