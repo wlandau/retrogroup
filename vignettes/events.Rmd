@@ -37,43 +37,43 @@ We assume the confidence interval is a Wald interval that is symmetric on the lo
 Then we can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
 
 $$
-\log(b_k) = \beta_k \pm q \sigma_k
+\log(b_k) = \beta_k \pm c \sigma_k
 $$
 
-where $q := \Phi^{-1}(1 - \alpha / 2)$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of the log hazard ratio estimate.
+where $c := \Phi^{-1}(1 - \alpha / 2)$ is the $(1 - \alpha/2)$ quantile of the standard normal distribution and $\sigma_k$ is the standard error of the log hazard ratio estimate.
 The sign is positive if $b_k$ is the upper bound and negative if $b_k$ is the lower bound.
 The variance $\sigma_k^2$ can be expressed as:
 
 $$
-\sigma_k^2 = \frac{\left ( \log(b_k) - \beta_k \right )^2}{q^2}
+\sigma_k^2 = \frac{\left ( \log(b_k) - \beta_k \right )^2}{c^2}
 $$
 
 Following @parmar1998 and @tierney2007, we use an approximation of the variance $\sigma_k^2$ that goes back to @schoenfeld1983:
 
 $$
-\sigma_k^2 \approx \frac{1}{e_k \rho (1 - \rho)}
+\sigma_k^2 \approx \frac{1}{e_k \bar{z} (1 - \bar{z})}
 $$
 
-where $\rho$ is the proportion of patients randomized to treatment:
+where $\bar{z}$ is the proportion of patients randomized to treatment:
 
 $$
-\rho := \frac{1}{n}\sum_{i = 1}^n z_i
+\bar{z} := \frac{1}{n}\sum_{i = 1}^n z_i
 $$
 
-The treatment allocation within each subgroup level is generally not available, so we use the overall proportion $\rho$ for every level $k$, an assumption that randomization supports.
+The treatment allocation within each subgroup level is generally not available, so we use the overall proportion $\bar{z}$ for every level $k$, an assumption that randomization supports.
 
 Equating the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
 
 $$
 \begin{aligned}
-\frac{\left ( \log(b_k) - \beta_k \right )^2}{q^2} &\approx \frac{1}{e_k \rho (1 - \rho)}\\
-e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{q^2}{\left ( \log(b_k) - \beta_k \right )^2}
+\frac{\left ( \log(b_k) - \beta_k \right )^2}{c^2} &\approx \frac{1}{e_k \bar{z} (1 - \bar{z})}\\
+e_k &\approx \frac{1}{\bar{z} (1 - \bar{z})} \frac{c^2}{\left ( \log(b_k) - \beta_k \right )^2}
 \end{aligned}
 $$
 
 The result is approximate for three reasons.
 First, the variance approximation is most accurate when $\beta_k$ is close to 0 and degrades for strong treatment effects.
-Second, the treatment allocation within level $k$ may differ from the overall proportion $\rho$, especially in small subgroups.
+Second, the treatment allocation within level $k$ may differ from the overall proportion $\bar{z}$, especially in small subgroups.
 Third, publications round hazard ratios and confidence bounds, usually to two decimal places, which can change $e_k$ noticeably when the confidence interval is narrow.
 
 These approximate event counts do not necessarily sum to the total number of events in the patient-level data, and they may exceed the subgroup sample sizes.
