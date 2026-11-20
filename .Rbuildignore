@@ -42,3 +42,4 @@
 ^vignettes/.*\.Rmd\.source$
 ^vignettes/render\.R$
 ^SECURITY\.md$
+^profiling$

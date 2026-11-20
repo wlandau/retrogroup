@@ -15,3 +15,4 @@ inst/doc
 
 /.quarto/
 **/*.quarto_ipynb
+profiling/
