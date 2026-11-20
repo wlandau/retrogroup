@@ -36,15 +36,25 @@ The loss function measures the distance between the assumed subgroup statistics 
 
 To get the observed statistics for subgroup level $k$, we fit a Cox proportional hazards model to the patients currently assigned to that level, $\{i : x_i = k\}$, with treatment $z_i$ as the only covariate.
 The model is fit by partial likelihood, which leaves the baseline hazard unspecified [@cox1972; @cox1975], as in `survival::coxph()`.
-Let $\hat\beta_k(x)$ be the estimated log hazard ratio of treatment versus control, and let $\beta_k$ be the assumed log hazard ratio for subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
+Let $\hat{\beta}_k(x)$ be the estimated log hazard ratio of treatment versus control, and let $\beta_k$ be the assumed log hazard ratio for subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
 
-The loss is the Euclidean distance between observed and assumed hazard ratios:
+Let $\hat{f}_k(x)$ be the observed event fraction of subgroup level $k$, the number of events divided by the number of patients:
 
 $$
-\Delta(x) := \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat\beta_k(x)\right) - \exp \left (\beta_k\right) \right)^2}
+\hat{f}_k(x) := \frac{1}{n_k} \sum_{i = 1}^n I(x_i = k) d_i
 $$
 
-The square root puts the loss, and therefore the user-specified tolerance, on the hazard ratio scale.
+and let $f_k := e_k / n_k$ be the assumed event fraction from `vignette("framing", package = "retrogroup")`.
+
+The loss is the Euclidean distance between the observed and assumed hazard ratios and event fractions:
+
+$$
+\Delta(x) := \sqrt{\sum_{k = 1}^K \left( \exp \left (\hat{\beta}_k(x)\right) - \exp \left (\beta_k\right) \right)^2 + \sum_{k = 1}^K \left( \hat{f}_k(x) - f_k \right)^2}
+$$
+
+The event fraction terms are a soft constraint: they steer the subgroup event counts toward their assumed values without forcing them to match.
+Hazard ratios and event fractions are both unitless and of similar magnitude, so the two sets of terms are not weighted.
+The square root puts the loss, and therefore the user-specified tolerance, on the same scale as the hazard ratios and event fractions.
 
 If the model cannot be fit for some subgroup level, for example because the level is empty or one of its arms has no events, we set $\Delta(x) = \infty$.
 
@@ -52,8 +62,8 @@ If the model cannot be fit for some subgroup level, for example because the leve
 
 Unconstrained sampling draws subgroup levels independently.
 We expect the observed number of patients in each subgroup level to deviate from the assumed subgroup counts $n_1, \ldots, n_K$, and likewise for the event counts $e_1, \ldots, e_K$.
-So although the observed subgroup level hazard ratios of an unconstrained optimized dataset may match the assumed hazard ratios, the subgroup variables are not built to carry prognostic information and are not suitable for covariate adjustment.
-For any prognostic value, we need constrained sampling and its optimization so the subgroup-level event counts are preserved.
+The loss steers the event fractions toward their assumed values, but nothing in the optimization preserves the subgroup counts.
+To preserve the subgroup counts, we need constrained sampling and its optimization.
 
 Let $x^{(i \to k)}$ denote the assignments that agree with $x$ except that patient $i$ belongs to subgroup level $k$.
 Each iteration:
@@ -70,31 +80,31 @@ Each iteration needs $K$ model fits (step 2).
 
 ## Optimization for constrained sampling
 
-Constrained sampling ensures that the observed numbers of patients and events in each subgroup level match the assumed subgroup counts $n_1, \ldots, n_K$ and the assumed subgroup event counts $e_1, \ldots, e_K$.
-The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed hazard ratios while maintaining the assumed subgroup counts and event counts.
-Both sets of counts are invariant because each reassignment is a swap between subgroup levels of two different patients with the same event status.
-The resulting subgroup variables carry some general prognostic information through the event counts.
-However, the loss only targets the hazard ratios of treatment versus control, and the event counts do not capture the timing of events.
-The timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
+Constrained sampling ensures that the observed number of patients in each subgroup level matches the assumed subgroup counts $n_1, \ldots, n_K$.
+The optimization method for constrained sampling adjusts subgroup assignments to approximate the assumed hazard ratios and event fractions while maintaining the assumed subgroup counts.
+Subgroup counts are invariant because each reassignment is a swap between subgroup levels of two different patients.
+The event counts are only steered by the soft constraint in the loss, so they are not guaranteed to match $e_1, \ldots, e_K$.
+In addition, the timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
 The statistician who uses an optimized dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.
 
 Let $x^{(i \leftrightarrow j)}$ denote the assignments that agree with $x$ except that patients $i$ and $j$ have exchanged subgroup levels.
 Each iteration:
 
-1. Draws a pair of patients $(i, j)$ uniformly at random from the pairs with $x_i \ne x_j$ and $d_i = d_j$, independently of previous iterations and with replacement.
+1. Draws a pair of patients $(i, j)$ uniformly at random from the pairs with $x_i \ne x_j$, independently of previous iterations and with replacement.
 2. Computes the loss $\Delta(x^{(i \leftrightarrow j)})$ of the swap.
 3. Updates $x \leftarrow x^{(i \leftrightarrow j)}$ if $\Delta(x^{(i \leftrightarrow j)}) < \Delta(x)$, and otherwise leaves $x$ unchanged.
 
 As with flips, the loss never increases.
-If no pair has $x_i \ne x_j$ and $d_i = d_j$, no swap is possible and $x$ stays unchanged.
+If no pair has $x_i \ne x_j$, no swap is possible and $x$ stays unchanged.
 A swap changes the patients in levels $x_i$ and $x_j$ only, so an iteration needs two model fits.
 
 ## Stopping
 
 Both methods stop when the loss falls below a tolerance or after a maximum number of iterations, whichever comes first.
-Because the loss is the Euclidean distance between hazard ratios on the linear scale, the tolerance is on the linear scale of the hazard ratio, not the log scale.
-Since $\left|\exp(\hat\beta_k(x)) - \exp(\beta_k)\right| \le \Delta(x)$ for every level $k$, a loss below the tolerance means that the observed hazard ratio of every subgroup level is within the tolerance of its assumed hazard ratio.
+Because the loss is a Euclidean distance on the linear scale of the hazard ratio, the tolerance is on the linear scale, not the log scale.
+Since $\left|\exp(\hat{\beta}_k(x)) - \exp(\beta_k)\right| \le \Delta(x)$ and $\left|\hat{f}_k(x) - f_k\right| \le \Delta(x)$ for every level $k$, a loss below the tolerance means that the observed hazard ratio and event fraction of every subgroup level are both within the tolerance of their assumed values.
 The default tolerance of $10^{-3}$ is much finer than the two decimal places hazard ratios are usually published with.
+However, the event fraction of level $k$ moves in steps of roughly $1 / n_k$, and the hazard ratio and event fraction terms may pull in different directions, so a small tolerance may be unreachable, in which case the search runs until the maximum number of iterations.
 The loss is non-increasing and bounded below by zero, so it converges.
 The search is greedy, however, so it may settle in a local minimum where no single flip or swap improves the loss.
 In particular, if the starting loss is infinite and no single flip or swap makes every model estimable, the search cannot make progress.

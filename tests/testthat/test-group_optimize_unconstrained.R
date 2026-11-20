@@ -96,10 +96,21 @@ test_that("group_optimize_unconstrained() handles factor levels in patient", {
   expect_identical(x, y)
 })
 
-test_that("optimize_loss_term() is on the hazard ratio scale", {
-  expect_equal(retrogroup:::optimize_loss_term(log(1.5), 1.2), 0.09)
-  expect_equal(retrogroup:::optimize_loss_term(0, 1), 0)
-  expect_identical(retrogroup:::optimize_loss_term(NA_real_, 1.2), Inf)
+test_that("optimize_loss_term() adds hazard ratio and event fraction terms", {
+  term <- function(fit, observed, hazard_ratio, patients = 10L, events = 5L) {
+    retrogroup:::optimize_loss_term(
+      fit = fit,
+      observed = observed,
+      hazard_ratio = hazard_ratio,
+      patients = patients,
+      events = events
+    )
+  }
+  expect_equal(term(log(1.5), 5L, 1.2), 0.09)
+  expect_equal(term(log(1.2), 3L, 1.2), 0.04)
+  expect_equal(term(log(1.5), 3L, 1.2), 0.13)
+  expect_equal(term(0, 5L, 1), 0)
+  expect_identical(term(NA_real_, 5L, 1.2), Inf)
 })
 
 test_that("optimize_loss_terms() matches the reference loss", {
@@ -114,7 +125,9 @@ test_that("optimize_loss_terms() matches the reference loss", {
       z = sample$treatment,
       t = sample$time,
       d = sample$event,
-      hazard_ratio = summary$hazard_ratio[rows]
+      hazard_ratio = summary$hazard_ratio[rows],
+      patients = summary$patients[rows],
+      events = summary$events[rows]
     )
     expect_equal(
       sqrt(sum(terms)),
@@ -129,11 +142,18 @@ test_that("optimize_unconstrained_variable() never increases the loss", {
   set.seed(0)
   index <- sample(1:2, nrow(patient), replace = TRUE)
   hazard_ratio <- exp(c(-0.5, 0.3))
-  args <- list(z = patient$treatment, t = patient$time, d = patient$event)
+  args <- list(
+    z = patient$treatment,
+    t = patient$time,
+    d = patient$event,
+    hazard_ratio = hazard_ratio,
+    patients = c(3L, 3L),
+    events = c(1L, 3L)
+  )
   loss <- function(index) {
     sqrt(sum(do.call(
       retrogroup:::optimize_loss_terms,
-      c(list(x = index), args, list(hazard_ratio = hazard_ratio))
+      c(list(x = index), args)
     )))
   }
   before <- loss(index)
@@ -143,7 +163,6 @@ test_that("optimize_unconstrained_variable() never increases the loss", {
       c(
         list(x = index),
         args,
-        list(hazard_ratio = hazard_ratio),
         list(iterations = iterations, tolerance = 0)
       )
     )
@@ -207,7 +226,8 @@ test_that("warn_optimize_tolerance() only lists unconverged variables", {
   expect_match(message, "\"age\" = ", fixed = TRUE)
   expect_match(message, "\"node4\" = ", fixed = TRUE)
   expect_false(grepl("\"sex\"", message, fixed = TRUE))
-  expect_match(message, "linear hazard ratio scale", fixed = TRUE)
+  expect_match(message, "hazard ratios on the linear scale", fixed = TRUE)
+  expect_match(message, "event fractions", fixed = TRUE)
   expect_no_warning(
     retrogroup:::warn_optimize_tolerance(c(age = 1e-8), 10L, 1e-6)
   )
@@ -218,19 +238,54 @@ test_that("both optimizers default to tolerance = 1e-3", {
   expect_identical(formals(group_optimize_constrained)$tolerance, 1e-3)
 })
 
-test_that("a loss below tolerance bounds every hazard ratio error", {
+test_that("a loss below tolerance bounds every hazard ratio and event fraction error", {
   set.seed(0)
   for (rep in seq_len(100L)) {
     observed <- exp(rnorm(4L, sd = 0.5))
     assumed <- exp(rnorm(4L, sd = 0.5))
+    patients <- sample(10:100, 4L)
+    observed_events <- vapply(patients, \(n) sample.int(n, 1L), integer(1L))
+    assumed_events <- vapply(patients, \(n) sample.int(n, 1L), integer(1L))
     terms <- vapply(
       seq_along(observed),
-      \(k) retrogroup:::optimize_loss_term(log(observed[k]), assumed[k]),
+      \(k) {
+        retrogroup:::optimize_loss_term(
+          fit = log(observed[k]),
+          observed = observed_events[k],
+          hazard_ratio = assumed[k],
+          patients = patients[k],
+          events = assumed_events[k]
+        )
+      },
       numeric(1L)
     )
     loss <- sqrt(sum(terms))
     expect_true(all(abs(observed - assumed) <= loss))
+    expect_true(
+      all(abs(observed_events / patients - assumed_events / patients) <= loss)
+    )
   }
+})
+
+test_that("optimization steers event counts toward the assumed counts", {
+  data <- probability_example()
+  summary <- data$summary[data$summary$variable == "age", ]
+  error <- function(x) {
+    observed <- as.integer(tapply(x$event, x$age, sum, default = 0L))
+    sum(abs(observed - summary$events) / summary$patients)
+  }
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, summary)
+  optimized <- suppressWarnings(
+    group_optimize_unconstrained(sample, summary, iterations = 300L)
+  )
+  expect_lte(error(optimized), error(sample))
+  set.seed(0)
+  sample <- group_sample_constrained(data$patient, summary)
+  optimized <- suppressWarnings(
+    group_optimize_constrained(sample, summary, iterations = 300L)
+  )
+  expect_lte(error(optimized), error(sample))
 })
 
 test_that("group_optimize_unconstrained() validates its arguments", {

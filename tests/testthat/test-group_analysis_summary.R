@@ -77,10 +77,6 @@ test_that("group_analysis_summary() counts constrained samples exactly", {
     a <- data$summary
     a$patients[order(a$variable, a$level)]
   })
-  expect_identical(x$events[order(x$variable, x$level)], {
-    a <- data$summary
-    a$events[order(a$variable, a$level)]
-  })
   for (row in seq_len(nrow(x))) {
     members <- sample[[x$variable[row]]] == x$level[row]
     expect_identical(x$events[row], sum(sample$event[members]))

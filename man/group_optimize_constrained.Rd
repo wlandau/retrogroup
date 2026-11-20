@@ -23,29 +23,33 @@ iterations for each subgroup variable. Each iteration draws one pair
 of patients and fits two Cox models.}
 
 \item{tolerance}{Non-negative number on the linear (natural) scale of
-the hazard ratio, not the log scale. The search for each subgroup
-variable stops when the loss \eqn{\Delta(x)} falls below \code{tolerance}.
-Because \eqn{\Delta(x)} is the Euclidean distance between the
-observed and assumed hazard ratios themselves, a loss below
-\code{tolerance} guarantees that the observed hazard ratio of every
-subgroup level is within \code{tolerance} of its assumed hazard ratio.
+the hazard ratio, not the log scale, and on the scale of the event
+fractions. The search for each subgroup variable stops when the loss
+\eqn{\Delta(x)} falls below \code{tolerance}. Because \eqn{\Delta(x)} is
+the Euclidean distance between the observed and assumed hazard ratios
+and event fractions themselves, a loss below \code{tolerance} guarantees
+that the observed hazard ratio and event fraction of every subgroup
+level are within \code{tolerance} of their assumed values.
 The default of \code{1e-3} is much finer than the two decimal places
-hazard ratios are usually published with. Larger values such as
-\code{1e-2} give faster but coarser fits.}
+hazard ratios are usually published with. However, the event fraction
+of level \eqn{k} moves in steps of \eqn{1 / n_k}, and the hazard ratio
+and event fraction terms may pull in different directions, so a small
+\code{tolerance} may be unreachable, in which case the search runs for all
+\code{iterations}. Larger values such as \code{1e-2} give faster but coarser
+fits.}
 }
 \value{
 A tibble with the same rows and columns as \code{patient}, in the
 same order. Each subgroup column is a factor of the optimized
 levels whose levels are those of the subgroup variable in
-\code{summary$level}, in the same order. The number of patients and the
-number of events in each level equal \code{summary$patients} and
-\code{summary$events}. All other columns are unchanged.
+\code{summary$level}, in the same order. The number of patients in each
+level equals \code{summary$patients}. All other columns are unchanged.
 }
 \description{
 Refine sampled subgroup levels so that the subgroup
 statistics observed in the data match the assumed subgroup
 statistics in \code{summary}, while preserving the assumed number of
-patients and number of events in each subgroup level.
+patients in each subgroup level.
 }
 \details{
 \code{group_optimize_constrained()} implements the
@@ -53,7 +57,7 @@ patients and number of events in each subgroup level.
 \code{vignette("optimization", package = "retrogroup")}, separately for each
 subgroup variable. The loss \eqn{\Delta(x)} is the same as in
 \code{\link[=group_optimize_unconstrained]{group_optimize_unconstrained()}}: the Euclidean distance between the
-observed and assumed hazard ratios. The observed hazard ratios come
+observed and assumed hazard ratios and event fractions. The observed hazard ratios come
 from a Cox proportional hazards model of each
 subgroup level with treatment as the only covariate, as in
 \code{\link[survival:coxph]{survival::coxph()}}. If the model cannot be fit for some subgroup
@@ -61,14 +65,12 @@ level, for example because one of its arms has no events, the loss is
 infinite.
 
 Each iteration draws a pair of patients \eqn{(i, j)} uniformly at
-random from the pairs with \eqn{x_i \ne x_j} and \eqn{d_i = d_j},
-where \eqn{d_i} is the event indicator of patient \eqn{i}, and swaps
-their subgroup levels if the swap reduces the loss. Otherwise, the
-subgroup levels stay the same, so the loss never increases. If no
-such pair exists, no swap is possible and the subgroup levels are
-returned unchanged. The search for each
-subgroup variable stops when the loss falls below \code{tolerance} (on the
-linear hazard ratio scale) or after \code{iterations} iterations,
+random from the pairs with \eqn{x_i \ne x_j} and swaps their subgroup
+levels if the swap reduces the loss. Otherwise, the subgroup levels
+stay the same, so the loss never increases. If no such pair exists,
+no swap is possible and the subgroup levels are returned unchanged.
+The search for each subgroup variable stops when the loss falls below
+\code{tolerance} or after \code{iterations} iterations,
 whichever comes first. If the loss of any subgroup variable is still
 at least \code{tolerance} after \code{iterations} iterations,
 \code{group_optimize_constrained()} throws a warning of class
@@ -76,18 +78,17 @@ at least \code{tolerance} after \code{iterations} iterations,
 final losses.
 
 The search is greedy, so it may settle in a local minimum. Swaps
-exchange two patients with the same event status, so they preserve
-both the number of patients and the number of events in each
-subgroup level. The optimized counts equal \code{summary$patients} and
-\code{summary$events}.
+preserve the number of patients in each subgroup level, so the
+optimized counts equal \code{summary$patients}.
 Use \code{\link[=group_optimize_unconstrained]{group_optimize_unconstrained()}} on the output of
 \code{\link[=group_sample_unconstrained]{group_sample_unconstrained()}} to optimize without the count
 constraint.
 
-The loss only targets the hazard ratios of treatment versus control.
-The preserved event counts carry some general prognostic information,
-but the timing of events within each subgroup level is not reproduced
-from the original data, so some prognostic information is lost. The
+The event fraction terms of the loss are only a soft constraint, so
+the number of events in each subgroup level is not guaranteed to
+equal \code{summary$events}. In addition, the timing of events within each
+subgroup level is not reproduced from the original data, so some
+prognostic information is lost. The
 statistician who uses the optimized data in an analysis, for example
 for covariate adjustment, is responsible for the consequences.
 
@@ -95,8 +96,8 @@ In addition to the requirements of \code{\link[=group_analysis_probability]{grou
 \code{patient} must have one column per subgroup variable in \code{summary},
 named after the subgroup variable, with no missing values and only the
 levels of that subgroup variable in \code{summary}. The number of patients
-and the number of events in each subgroup level of these columns must
-equal \code{summary$patients} and \code{summary$events}. The output of
+in each subgroup level of these columns must equal
+\code{summary$patients}. The output of
 \code{\link[=group_sample_constrained]{group_sample_constrained()}} satisfies these requirements. These
 columns are the starting subgroup levels, and all other columns of
 \code{patient} are returned unchanged.

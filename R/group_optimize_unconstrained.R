@@ -8,9 +8,14 @@
 #'   "Optimization for unconstrained sampling" section of
 #'   `vignette("optimization", package = "retrogroup")`, separately for each
 #'   subgroup variable. The loss \eqn{\Delta(x)} is the Euclidean
-#'   distance between the observed and assumed hazard ratios of the levels
-#'   of the subgroup variable, as defined in the "Loss function" section of
-#'   that vignette. The observed hazard ratios come from a Cox proportional
+#'   distance between the observed and assumed hazard ratios and event
+#'   fractions of the levels of the subgroup variable, as defined in the
+#'   "Loss function" section of that vignette. The event fraction of a
+#'   level is its number of events divided by its assumed number of
+#'   patients in `summary$patients`, and the assumed event fraction is
+#'   `summary$events / summary$patients`. The event fraction terms are a
+#'   soft constraint: they steer the event counts toward `summary$events`
+#'   without forcing them to match. The observed hazard ratios come from a Cox proportional
 #'   hazards model of each subgroup level with treatment as the only
 #'   covariate, as in [survival::coxph()]. If the model cannot be fit for
 #'   some subgroup level, for example because the level is empty or one of
@@ -21,7 +26,7 @@
 #'   \eqn{\Delta(x^{(i \to k)})}. The patient stays put if the current
 #'   level ties for the minimum, so the loss never increases. The search
 #'   for each subgroup variable stops when the loss falls below `tolerance`
-#'   (on the linear hazard ratio scale) or after `iterations` iterations,
+#'   or after `iterations` iterations,
 #'   whichever comes first. If the loss of any subgroup variable is still
 #'   at least `tolerance` after `iterations` iterations,
 #'   `group_optimize_unconstrained()` throws a warning of class
@@ -29,8 +34,8 @@
 #'   final losses.
 #'
 #'   The search is greedy, so it may settle in a local minimum. The number
-#'   of patients in each subgroup level is not guaranteed to equal the
-#'   assumed number of patients in `summary`. Use
+#'   of patients and the number of events in each subgroup level are not
+#'   guaranteed to equal the assumed counts in `summary`. Use
 #'   [group_optimize_constrained()] on the output of
 #'   [group_sample_constrained()] to preserve the assumed counts.
 #'
@@ -53,15 +58,20 @@
 #'   iterations for each subgroup variable. Each iteration draws one
 #'   patient and fits one Cox model per subgroup level.
 #' @param tolerance Non-negative number on the linear (natural) scale of
-#'   the hazard ratio, not the log scale. The search for each subgroup
-#'   variable stops when the loss \eqn{\Delta(x)} falls below `tolerance`.
-#'   Because \eqn{\Delta(x)} is the Euclidean distance between the
-#'   observed and assumed hazard ratios themselves, a loss below
-#'   `tolerance` guarantees that the observed hazard ratio of every
-#'   subgroup level is within `tolerance` of its assumed hazard ratio.
+#'   the hazard ratio, not the log scale, and on the scale of the event
+#'   fractions. The search for each subgroup variable stops when the loss
+#'   \eqn{\Delta(x)} falls below `tolerance`. Because \eqn{\Delta(x)} is
+#'   the Euclidean distance between the observed and assumed hazard ratios
+#'   and event fractions themselves, a loss below `tolerance` guarantees
+#'   that the observed hazard ratio and event fraction of every subgroup
+#'   level are within `tolerance` of their assumed values.
 #'   The default of `1e-3` is much finer than the two decimal places
-#'   hazard ratios are usually published with. Larger values such as
-#'   `1e-2` give faster but coarser fits.
+#'   hazard ratios are usually published with. However, the event fraction
+#'   of level \eqn{k} moves in steps of \eqn{1 / n_k}, and the hazard ratio
+#'   and event fraction terms may pull in different directions, so a small
+#'   `tolerance` may be unreachable, in which case the search runs for all
+#'   `iterations`. Larger values such as `1e-2` give faster but coarser
+#'   fits.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -110,6 +120,8 @@ group_optimize_unconstrained <- function(
       t = patient$time,
       d = patient$event,
       hazard_ratio = summary$hazard_ratio[rows],
+      patients = summary$patients[rows],
+      events = summary$events[rows],
       iterations = iterations,
       tolerance = tolerance
     )
@@ -132,8 +144,11 @@ group_optimize_unconstrained <- function(
 #' @param t Numeric vector, time of each patient.
 #' @param d Integer vector, event indicator of each patient.
 #' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
+#' @param patients Integer vector, assumed number of patients of each level.
+#' @param events Integer vector, assumed number of events of each level.
 #' @param iterations Maximum number of iterations.
-#' @param tolerance Loss tolerance on the linear hazard ratio scale.
+#' @param tolerance Loss tolerance on the scale of the hazard ratios and
+#'   event fractions.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -151,6 +166,8 @@ group_optimize_unconstrained <- function(
 #'     t = patient$time,
 #'     d = patient$event,
 #'     hazard_ratio = sex$hazard_ratio,
+#'     patients = sex$patients,
+#'     events = sex$events,
 #'     iterations = 20,
 #'     tolerance = 1e-3
 #'   )
@@ -162,6 +179,8 @@ optimize_unconstrained_variable <- function(
   t,
   d,
   hazard_ratio,
+  patients,
+  events,
   iterations,
   tolerance
 ) {
@@ -170,10 +189,16 @@ optimize_unconstrained_variable <- function(
   # Loss term of subgroup level k if its patients are the ones in members.
   loss_term <- function(members, k) {
     fit <- analysis_fit(z[members], t[members], d[members])
-    optimize_loss_term(fit, hazard_ratio[k])
+    optimize_loss_term(
+      fit = fit,
+      observed = sum(d[members]),
+      hazard_ratio = hazard_ratio[k],
+      patients = patients[k],
+      events = events[k]
+    )
   }
   # Loss terms of x, one per subgroup level, and the loss Delta(x).
-  terms <- optimize_loss_terms(x, z, t, d, hazard_ratio)
+  terms <- optimize_loss_terms(x, z, t, d, hazard_ratio, patients, events)
   loss <- sqrt(sum(terms))
   iteration <- 0L
   while (iteration < iterations && !(loss < tolerance)) {

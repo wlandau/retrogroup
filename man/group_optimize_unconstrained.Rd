@@ -23,15 +23,20 @@ iterations for each subgroup variable. Each iteration draws one
 patient and fits one Cox model per subgroup level.}
 
 \item{tolerance}{Non-negative number on the linear (natural) scale of
-the hazard ratio, not the log scale. The search for each subgroup
-variable stops when the loss \eqn{\Delta(x)} falls below \code{tolerance}.
-Because \eqn{\Delta(x)} is the Euclidean distance between the
-observed and assumed hazard ratios themselves, a loss below
-\code{tolerance} guarantees that the observed hazard ratio of every
-subgroup level is within \code{tolerance} of its assumed hazard ratio.
+the hazard ratio, not the log scale, and on the scale of the event
+fractions. The search for each subgroup variable stops when the loss
+\eqn{\Delta(x)} falls below \code{tolerance}. Because \eqn{\Delta(x)} is
+the Euclidean distance between the observed and assumed hazard ratios
+and event fractions themselves, a loss below \code{tolerance} guarantees
+that the observed hazard ratio and event fraction of every subgroup
+level are within \code{tolerance} of their assumed values.
 The default of \code{1e-3} is much finer than the two decimal places
-hazard ratios are usually published with. Larger values such as
-\code{1e-2} give faster but coarser fits.}
+hazard ratios are usually published with. However, the event fraction
+of level \eqn{k} moves in steps of \eqn{1 / n_k}, and the hazard ratio
+and event fraction terms may pull in different directions, so a small
+\code{tolerance} may be unreachable, in which case the search runs for all
+\code{iterations}. Larger values such as \code{1e-2} give faster but coarser
+fits.}
 }
 \value{
 A tibble with the same rows and columns as \code{patient}, in the
@@ -49,9 +54,14 @@ statistics in \code{summary}. Patient counts are not preserved.
 "Optimization for unconstrained sampling" section of
 \code{vignette("optimization", package = "retrogroup")}, separately for each
 subgroup variable. The loss \eqn{\Delta(x)} is the Euclidean
-distance between the observed and assumed hazard ratios of the levels
-of the subgroup variable, as defined in the "Loss function" section of
-that vignette. The observed hazard ratios come from a Cox proportional
+distance between the observed and assumed hazard ratios and event
+fractions of the levels of the subgroup variable, as defined in the
+"Loss function" section of that vignette. The event fraction of a
+level is its number of events divided by its assumed number of
+patients in \code{summary$patients}, and the assumed event fraction is
+\code{summary$events / summary$patients}. The event fraction terms are a
+soft constraint: they steer the event counts toward \code{summary$events}
+without forcing them to match. The observed hazard ratios come from a Cox proportional
 hazards model of each subgroup level with treatment as the only
 covariate, as in \code{\link[survival:coxph]{survival::coxph()}}. If the model cannot be fit for
 some subgroup level, for example because the level is empty or one of
@@ -62,7 +72,7 @@ that patient to the subgroup level \eqn{k} that minimizes
 \eqn{\Delta(x^{(i \to k)})}. The patient stays put if the current
 level ties for the minimum, so the loss never increases. The search
 for each subgroup variable stops when the loss falls below \code{tolerance}
-(on the linear hazard ratio scale) or after \code{iterations} iterations,
+or after \code{iterations} iterations,
 whichever comes first. If the loss of any subgroup variable is still
 at least \code{tolerance} after \code{iterations} iterations,
 \code{group_optimize_unconstrained()} throws a warning of class
@@ -70,8 +80,8 @@ at least \code{tolerance} after \code{iterations} iterations,
 final losses.
 
 The search is greedy, so it may settle in a local minimum. The number
-of patients in each subgroup level is not guaranteed to equal the
-assumed number of patients in \code{summary}. Use
+of patients and the number of events in each subgroup level are not
+guaranteed to equal the assumed counts in \code{summary}. Use
 \code{\link[=group_optimize_constrained]{group_optimize_constrained()}} on the output of
 \code{\link[=group_sample_constrained]{group_sample_constrained()}} to preserve the assumed counts.
 

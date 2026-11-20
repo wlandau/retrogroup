@@ -37,24 +37,18 @@ $$
 
 Unconstrained sampling is simple, but it does not guarantee that the resulting subgroup assignments match $n_k$, the assumed number of patients in each subgroup level $k$ from `vignette("framing", package = "retrogroup")`.
 In addition, the model in `vignette("model", package = "retrogroup")` has no prognostic effect, so the subgroups from unconstrained sampling are not (on average) associated with the disease's natural history and should not be used for covariate adjustment.
-To generate subgroup variables with prognostic information, we need constrained sampling.
+To preserve the subgroup sample sizes, we need constrained sampling.
 
 ## Constrained sampling
 
-Constrained sampling forces the sampled subgroup levels to match the assumed sample size $n_k$ and event count $e_k$ for each subgroup level $k$.
-To preserve these counts, we iterate through a random permutation of patients and assign each one to a random subgroup level that still has room for a patient with that patient's event status.
+Constrained sampling forces the sampled subgroup levels to match the assumed sample size $n_k$ for each subgroup level $k$.
+To preserve these counts, we iterate through a random permutation of patients and assign each one to a random subgroup level with fewer than $n_k$ patients.
 
 Let $\rho_1, \ldots, \rho_n$ be a random permutation of patient indexes $1, \ldots, n$.
 At arbitrary patient $\rho_j$ ($j = 1, \ldots, n$), patients $\rho_1, \ldots, \rho_{j-1}$ have already been assigned to subgroup levels, with $n^*_{jk}$ patients in subgroup level $k$ so far:
 
 $$
 n^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k)
-$$
-
-and $e^*_{jk}$ events in subgroup level $k$ so far:
-
-$$
-e^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k) d_{\rho_h}
 $$
 
 We draw $x_{\rho_j}$ from a categorical distribution:
@@ -68,19 +62,16 @@ where probabilities $q_{{\rho_j}k}$ are normalized versions of $p_{{\rho_j}k}$ t
 $$
 q_{{\rho_j}k} :=
 \begin{cases}
-\dfrac{p_{{\rho_j}k}}{\sum_{l = 1}^K I(n^*_{jl} < n_l) I(e^*_{jl} < e_l) p_{{\rho_j}l}}, & \text{if } d_{\rho_j} = 1 \text{ and } n^*_{jk} < n_k \text{ and } e^*_{jk} < e_k \\
-0, & \text{if } d_{\rho_j} = 1 \text{ and } (n^*_{jk} = n_k \text{ or } e^*_{jk} = e_k) \\
-\dfrac{p_{{\rho_j}k}}{\sum_{l = 1}^K I(n^*_{jl} < n_l) I(n^*_{jl} - e^*_{jl} < n_l - e_l) p_{{\rho_j}l}}, & \text{if } d_{\rho_j} = 0 \text{ and } n^*_{jk} < n_k \text{ and } n^*_{jk} - e^*_{jk} < n_k - e_k \\
-0, & \text{if } d_{\rho_j} = 0 \text{ and } (n^*_{jk} = n_k \text{ or } n^*_{jk} - e^*_{jk} = n_k - e_k)
+\dfrac{p_{{\rho_j}k}}{\sum_{l = 1}^K I(n^*_{jl} < n_l) p_{{\rho_j}l}}, & \text{if } n^*_{jk} < n_k \\
+0, & \text{if } n^*_{jk} = n_k
 \end{cases}
 $$
 
-Recall from `vignette("framing", package = "retrogroup")` that $1 \le e_k \le n_k$ for every $k$, $n = \sum_{k = 1}^K n_k$, and $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
-Under these constraints, the remaining event slots across subgroup levels always equal the number of unassigned patients with events, and the remaining non-event slots always equal the number of unassigned patients without events, so at least one subgroup level has room for patient $\rho_j$ at every step.
-Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "retrogroup")`, so the denominators above are positive.
+We assume $\sum_{k = 1}^K n_k = n$, so at least one subgroup level has room at every step.
+Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "retrogroup")`, so the denominator above is positive.
 This scheme guarantees the assumed counts, but it is only an approximate draw from independent categorical distributions conditional on those counts, because patients late in the permutation can only join subgroup levels that still have room.
 
-The event counts $e_k$ carry some general prognostic information, so subgroup variables from constrained sampling are associated with the outcome in a way that unconstrained subgroup variables are not.
-However, constrained sampling only controls how many events each subgroup level has, not when they happen.
-The timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
+Constrained sampling preserves the sample sizes $n_k$ but does not target the event counts $e_k$.
+The loss function in `vignette("optimization", package = "retrogroup")` steers the observed event fraction of each subgroup level toward $e_k / n_k$, but only as a soft constraint, so the event counts are not guaranteed to match.
+In addition, the timing of events within each subgroup level is not reproduced from the original data, so some prognostic information is lost.
 The statistician who uses a reconstructed dataset in an analysis, for example for covariate adjustment, is responsible for the consequences.

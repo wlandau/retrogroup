@@ -182,8 +182,8 @@ test_that("group_data_events() returns the structure of group_data_summary()", {
   set.seed(0)
   sample <- group_sample_constrained(data$patient, out)
   expect_equal(
-    as.integer(tapply(sample$event, sample$age, sum)),
-    out$events[out$variable == "age"]
+    as.integer(table(sample$age)),
+    out$patients[out$variable == "age"]
   )
 })
 

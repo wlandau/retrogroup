@@ -2,20 +2,27 @@
 #' @noRd
 #' @return Numeric scalar, the contribution of the level to the squared
 #'   loss \eqn{\Delta(x)^2}:
-#'   \eqn{(\exp(\hat\beta_k(x)) - \exp(\beta_k))^2}.
+#'   \eqn{(\exp(\hat{\beta}_k(x)) - \exp(\beta_k))^2 + (\hat{f}_k(x) - f_k)^2},
+#'   where \eqn{\hat{f}_k(x)} is the observed number of events divided by
+#'   the assumed number of patients \eqn{n_k}, and \eqn{f_k = e_k / n_k}.
 #'   `Inf` if the model could not be fit.
 #' @param fit Numeric scalar from `analysis_fit()`, the observed log hazard
-#'   ratio \eqn{\hat\beta_k(x)} of the level, or `NA`.
+#'   ratio \eqn{\hat{\beta}_k(x)} of the level, or `NA`.
+#' @param observed Integer scalar, observed number of events in the level.
 #' @param hazard_ratio Numeric scalar, assumed hazard ratio
 #'   \eqn{\exp(\beta_k)} of the level.
+#' @param patients Integer scalar, assumed number of patients \eqn{n_k}
+#'   of the level.
+#' @param events Integer scalar, assumed number of events \eqn{e_k} of
+#'   the level.
 #' @examples
-#'   optimize_loss_term(-0.3, hazard_ratio = 0.8)
-#'   optimize_loss_term(NA_real_, hazard_ratio = 0.8)
-optimize_loss_term <- function(fit, hazard_ratio) {
+#'   optimize_loss_term(-0.3, 40L, hazard_ratio = 0.8, patients = 100L, events = 45L)
+#'   optimize_loss_term(NA_real_, 40L, hazard_ratio = 0.8, patients = 100L, events = 45L)
+optimize_loss_term <- function(fit, observed, hazard_ratio, patients, events) {
   if (is.na(fit)) {
     return(Inf)
   }
-  (exp(fit) - hazard_ratio)^2
+  (exp(fit) - hazard_ratio)^2 + ((observed - events) / patients)^2
 }
 
 #' @title Loss terms of all levels of one subgroup variable
@@ -28,6 +35,8 @@ optimize_loss_term <- function(fit, hazard_ratio) {
 #' @param t Numeric vector, time of each patient.
 #' @param d Integer vector, event indicator of each patient.
 #' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
+#' @param patients Integer vector, assumed number of patients of each level.
+#' @param events Integer vector, assumed number of events of each level.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -44,15 +53,23 @@ optimize_loss_term <- function(fit, hazard_ratio) {
 #'     z = patient$treatment,
 #'     t = patient$time,
 #'     d = patient$event,
-#'     hazard_ratio = sex$hazard_ratio
+#'     hazard_ratio = sex$hazard_ratio,
+#'     patients = sex$patients,
+#'     events = sex$events
 #'   )
-optimize_loss_terms <- function(x, z, t, d, hazard_ratio) {
+optimize_loss_terms <- function(x, z, t, d, hazard_ratio, patients, events) {
   vapply(
     seq_along(hazard_ratio),
     \(k) {
       members <- x == k
       fit <- analysis_fit(z[members], t[members], d[members])
-      optimize_loss_term(fit, hazard_ratio[k])
+      optimize_loss_term(
+        fit = fit,
+        observed = sum(d[members]),
+        hazard_ratio = hazard_ratio[k],
+        patients = patients[k],
+        events = events[k]
+      )
     },
     numeric(1L)
   )
@@ -66,7 +83,8 @@ optimize_loss_terms <- function(x, z, t, d, hazard_ratio) {
 #' @param summary Summary subgroup statistics, the output of
 #'   [group_data_summary()].
 #' @param iterations Maximum number of iterations per subgroup variable.
-#' @param tolerance Loss tolerance on the linear hazard ratio scale.
+#' @param tolerance Loss tolerance on the scale of the hazard ratios and
+#'   event fractions.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -149,7 +167,8 @@ assert_optimize_arguments <- function(
 #' @param loss Named numeric vector with the final loss of each subgroup
 #'   variable.
 #' @param iterations Maximum number of iterations per subgroup variable.
-#' @param tolerance Loss tolerance on the linear hazard ratio scale.
+#' @param tolerance Loss tolerance on the scale of the hazard ratios and
+#'   event fractions.
 #' @examples
 #'   warn_optimize_tolerance(
 #'     loss = c(age = 1e-8, sex = 0.02),
@@ -182,7 +201,8 @@ warn_optimize_tolerance <- function(loss, iterations, tolerance) {
           "."
         ),
         i = paste(
-          "tolerance is on the linear hazard ratio scale.",
+          "tolerance applies to the hazard ratios on the linear scale",
+          "and to the event fractions.",
           "Increase iterations, rerun from freshly sampled subgroup levels,",
           "or increase tolerance."
         )
