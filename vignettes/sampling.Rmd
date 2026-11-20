@@ -22,7 +22,7 @@ library(retrogroup)
 `vignette("model", package = "retrogroup")` derives $p_{ik}$, an estimate of the posterior probability that patient $i$ belongs to subgroup level $k$ ($i = 1, \ldots, n$, $k = 1, \ldots, K$).
 This vignette explains a method to sample subgroup levels $x_1, \ldots, x_n$ given fixed posterior probability estimates $p_{ik}$.
 
-Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should match the assumed hazard ratios on average.
+Over a large number of simulations, subgroup hazard ratios computed on the simulated datasets should approximately match the assumed hazard ratios on average, provided the patient-level data are consistent with the model.
 However, each individual simulated dataset is subject to random variation and may not exactly match the assumed statistics.
 `vignette("optimization", package = "retrogroup")` defines methods to refine an individual dataset so the observed and assumed subgroup hazard ratios match.
 
@@ -45,12 +45,13 @@ Constrained sampling forces the sampled subgroup levels to match the assumed sam
 To preserve these counts, we iterate through a random permutation of patients and assign each one to a random subgroup level that still has room for a patient with that patient's event status.
 
 Let $\rho_1, \ldots, \rho_n$ be a random permutation of patient indexes $1, \ldots, n$.
-At arbitrary patient $\rho_j$ ($j = 1, \ldots, n$), patients $\rho_1, \ldots, \rho_{j-1}$ have already been assigned to subgroup levels, with $n^*_{jk}$ patients in subgroup $k$ so far:
+At arbitrary patient $\rho_j$ ($j = 1, \ldots, n$), patients $\rho_1, \ldots, \rho_{j-1}$ have already been assigned to subgroup levels, with $n^*_{jk}$ patients in subgroup level $k$ so far:
 
 $$
 n^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k)
 $$
-and $e^*_{jk}$ events in subgroup $k$ so far:
+
+and $e^*_{jk}$ events in subgroup level $k$ so far:
 
 $$
 e^*_{jk} := \sum_{h = 1}^{j - 1} I(x_{\rho_h} = k) d_{\rho_h}
@@ -74,7 +75,7 @@ q_{{\rho_j}k} :=
 \end{cases}
 $$
 
-We assume $0 \le e_k \le n_k$ for every $k$, $\sum_{k = 1}^K n_k = n$, and $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$.
-Under these assumptions, the remaining event slots across subgroup levels always equal the number of unassigned patients with events, and the remaining non-event slots always equal the number of unassigned patients without events, so at least one subgroup level has room for patient $\rho_j$ at every step.
-Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "retrogroup")`, so the denominator above is positive.
+Recall from `vignette("framing", package = "retrogroup")` that $1 \le e_k \le n_k$ for every $k$, $n = \sum_{k = 1}^K n_k$, and $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
+Under these constraints, the remaining event slots across subgroup levels always equal the number of unassigned patients with events, and the remaining non-event slots always equal the number of unassigned patients without events, so at least one subgroup level has room for patient $\rho_j$ at every step.
+Every $p_{ik}$ is strictly positive, as shown in `vignette("model", package = "retrogroup")`, so the denominators above are positive.
 This scheme guarantees the assumed counts, but it is only an approximate draw from independent categorical distributions conditional on those counts, because patients late in the permutation can only join subgroup levels that still have room.
