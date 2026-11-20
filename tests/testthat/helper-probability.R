@@ -11,8 +11,8 @@ probability_example <- function() {
     variable = "variable",
     level = "level",
     patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio",
-    standard_error = "standard_error"
+    events = "events",
+    hazard_ratio = "hazard_ratio"
   )
   list(patient = patient, summary = summary)
 }
@@ -27,8 +27,8 @@ probability_small <- function() {
     variable = c("age", "age", "sex", "sex", "sex"),
     level = c("young", "old", "male", "female", "other"),
     patients = c(2L, 4L, 1L, 2L, 3L),
-    log_hazard_ratio = c(-0.5, 0.3, 0.2, -0.1, 0),
-    standard_error = NA_real_
+    events = c(1L, 3L, 1L, 1L, 2L),
+    hazard_ratio = exp(c(-0.5, 0.3, 0.2, -0.1, 0))
   )
   list(patient = patient, summary = summary)
 }

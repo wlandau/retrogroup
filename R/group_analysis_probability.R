@@ -11,9 +11,11 @@
 #'   error when any probability is numerically indistinguishable from zero.
 #'
 #'   The total number of patients of every subgroup variable in
-#'   `summary` must equal the number of rows of `patient`. See the details
-#'   of [group_data_summary()] for how to choose the counts. The
-#'   `standard_error` column of `summary` is not used.
+#'   `summary` must equal the number of rows of `patient`, and the total
+#'   number of events of every subgroup variable must equal the number of
+#'   events in `patient`. See the details of [group_data_summary()] for how
+#'   to choose the counts. The model uses the patient counts and the log of
+#'   the hazard ratios in `summary`, not the event counts.
 #' @return A named list with one element per subgroup variable, in the
 #'   order the subgroup variables first appear in `summary$variable`.
 #'   Each element is a numeric matrix of the estimated posterior
@@ -41,8 +43,8 @@
 #'     variable = "variable",
 #'     level = "level",
 #'     patients = "patients",
-#'     log_hazard_ratio = "log_hazard_ratio",
-#'     standard_error = "standard_error"
+#'     events = "events",
+#'     hazard_ratio = "hazard_ratio"
 #'   )
 #'   probability <- group_analysis_probability(patient, summary)
 #'   names(probability)
@@ -62,7 +64,7 @@ group_analysis_probability <- function(patient, summary) {
       variable = variable,
       level = summary$level[rows],
       n = summary$patients[rows],
-      beta = summary$log_hazard_ratio[rows],
+      beta = log(summary$hazard_ratio[rows]),
       z = z,
       d = d,
       Lambda_0 = Lambda_0
@@ -78,8 +80,9 @@ group_analysis_probability <- function(patient, summary) {
 #'   column per level, with column names `level`.
 #' @param variable Character string, name of the subgroup variable.
 #' @param level Character vector, levels of the subgroup variable.
-#' @param n Integer vector, published number of patients in each level.
-#' @param beta Numeric vector, published log hazard ratio in each level.
+#' @param n Integer vector, assumed number of patients in each level.
+#' @param beta Numeric vector, log of the assumed hazard ratio in each
+#'   level.
 #' @param z Integer vector, treatment indicator of each patient.
 #' @param d Integer vector, event indicator of each patient.
 #' @param Lambda_0 Numeric vector, estimated baseline cumulative hazard
@@ -101,7 +104,7 @@ group_analysis_probability <- function(patient, summary) {
 #'     variable = "sex",
 #'     level = sex$level,
 #'     n = sex$patients,
-#'     beta = sex$log_hazard_ratio,
+#'     beta = log(sex$hazard_ratio),
 #'     z = z,
 #'     d = d,
 #'     Lambda_0 = probability_nelson_aalen(z, t, d)
@@ -226,7 +229,7 @@ assert_probability_summary <- function(summary) {
   if (!is.data.frame(summary)) {
     throw_error(c("summary must be a data frame.", i = hint))
   }
-  columns <- c("variable", "level", "patients", "log_hazard_ratio")
+  columns <- c("variable", "level", "patients", "events", "hazard_ratio")
   missing <- setdiff(columns, colnames(summary))
   if (length(missing)) {
     throw_error(
@@ -246,8 +249,8 @@ assert_probability_summary <- function(summary) {
       variable = "variable",
       level = "level",
       patients = "patients",
-      log_hazard_ratio = "log_hazard_ratio",
-      standard_error = NULL
+      events = "events",
+      hazard_ratio = "hazard_ratio"
     ),
     retrogroup_error = \(error) {
       throw_error(c("summary is invalid.", i = hint), parent = error)
@@ -293,6 +296,25 @@ assert_probability_joint <- function(patient, summary) {
           "."
         ),
         i = message_count_adjustment()
+      )
+    )
+  }
+  events <- tapply(summary$events, summary$variable, sum)[variables]
+  if (any(events != sum(patient$event))) {
+    throw_error(
+      c(
+        paste(
+          "The total number of events of every subgroup variable",
+          "in summary must equal the number of events in patient."
+        ),
+        x = paste0(
+          "sum(patient$event) = ",
+          sum(patient$event),
+          ". Totals by subgroup variable: ",
+          paste(names(events), "=", events, collapse = ", "),
+          "."
+        ),
+        i = message_count_adjustment("event")
       )
     )
   }

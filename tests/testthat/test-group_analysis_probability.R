@@ -57,7 +57,7 @@ test_that("group_analysis_probability() matches a direct loop over the formula",
   for (variable in unique(summary$variable)) {
     rows <- summary$variable == variable
     n <- summary$patients[rows]
-    beta <- summary$log_hazard_ratio[rows]
+    beta <- log(summary$hazard_ratio[rows])
     expected <- matrix(0, m, sum(rows))
     for (i in seq_len(m)) {
       w <- log(n) + d[i] * beta * z[i] - Lambda_0[i] * exp(beta * z[i])
@@ -128,11 +128,16 @@ test_that("group_analysis_probability() validates summary", {
     "data frame",
     class = "retrogroup_error"
   )
-  expect_error(
-    group_analysis_probability(data$patient, data$summary[, -4]),
-    "missing column",
-    class = "retrogroup_error"
-  )
+  for (column in c("events", "hazard_ratio")) {
+    expect_error(
+      group_analysis_probability(
+        data$patient,
+        data$summary[, setdiff(colnames(data$summary), column)]
+      ),
+      paste0("missing column.*\"", column, "\""),
+      class = "retrogroup_error"
+    )
+  }
   summary <- data$summary
   summary$patients[1] <- 0L
   expect_error(
@@ -156,12 +161,24 @@ test_that("group_analysis_probability() checks patient and summary together", {
     "nrow\\(patient\\) = 6. Totals by subgroup variable: age = 7, sex = 7",
     class = "retrogroup_error"
   )
+  summary <- data$summary
+  summary$events <- c(2L, 3L, 1L, 2L, 2L)
+  expect_error(
+    group_analysis_probability(data$patient, summary),
+    "must equal the number of events in patient",
+    class = "retrogroup_error"
+  )
+  expect_error(
+    group_analysis_probability(data$patient, summary),
+    "sum\\(patient\\$event\\) = 4. Totals by subgroup variable: age = 5, sex = 5",
+    class = "retrogroup_error"
+  )
 })
 
 test_that("group_analysis_probability() rejects numerically zero probabilities", {
   data <- probability_small()
   summary <- data$summary
-  summary$log_hazard_ratio[1] <- 50
+  summary$hazard_ratio[1] <- exp(50)
   expect_error(
     group_analysis_probability(data$patient, summary),
     "sqrt\\(.Machine\\$double.eps\\)",

@@ -63,19 +63,19 @@ group_example_patient()
 ```
 
 `group_example_summary()` returns subgroup statistics like the ones a publication would report.
-For each level of age, nodal status, and sex, it gives the number of patients and the log hazard ratio (with standard error) of treatment versus control.
+For each level of age, nodal status, and sex, it gives the number of patients, the number of events, and the hazard ratio of treatment versus control.
 
 ``` r
 group_example_summary()
 #> # A tibble: 6 × 5
-#>   variable level      patients log_hazard_ratio standard_error
-#>   <chr>    <chr>         <int>            <dbl>          <dbl>
-#> 1 age      under 60        280           -0.169          0.178
-#> 2 age      60 or over      339           -0.546          0.160
-#> 3 node4    no              453           -0.417          0.153
-#> 4 node4    yes             166           -0.312          0.190
-#> 5 sex      female          312           -0.147          0.162
-#> 6 sex      male            307           -0.656          0.179
+#>   variable level      patients events hazard_ratio
+#>   <chr>    <chr>         <int>  <int>        <dbl>
+#> 1 age      under 60        280    129        0.844
+#> 2 age      60 or over      339    162        0.579
+#> 3 node4    no              453    177        0.659
+#> 4 node4    yes             166    114        0.732
+#> 5 sex      female          312    152        0.863
+#> 6 sex      male            307    139        0.519
 ```
 
 ### Pre-processing
@@ -97,8 +97,8 @@ summary <- group_data_summary(
   variable = "variable",
   level = "level",
   patients = "patients",
-  log_hazard_ratio = "log_hazard_ratio",
-  standard_error = "standard_error"
+  events = "events",
+  hazard_ratio = "hazard_ratio"
 )
 ```
 
@@ -131,7 +131,7 @@ sample
 ```
 
 Each sampled dataset is one random draw, so its subgroup hazard ratios differ somewhat from the published ones.
-Across many draws, however, they match the published log hazard ratios on average.
+Across many draws, however, they match the published hazard ratios on average.
 The [sampling benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_sampling.html) show this for both the colon cancer example and simulated data.
 
 The model has no prognostic effect, so sampled subgroup levels are not (on average) associated with the disease's natural history, and sampled datasets should not be used for covariate adjustment.
@@ -144,12 +144,7 @@ Optimization refines a single sampled dataset so that its subgroup hazard ratios
 
 ``` r
 set.seed(0)
-optimized <- group_optimize_constrained(
-  sample,
-  summary,
-  iterations = 10000L,
-  tolerance = 4e-5
-)
+optimized <- group_optimize_constrained(sample, summary)
 ```
 
 `group_analysis_summary()` computes the subgroup statistics of a patient-level dataset.
@@ -157,33 +152,33 @@ optimized <- group_optimize_constrained(
 ``` r
 group_analysis_summary(optimized)
 #> # A tibble: 6 × 5
-#>   variable level      patients log_hazard_ratio standard_error
-#>   <chr>    <chr>         <int>            <dbl>          <dbl>
-#> 1 age      under 60        280           -0.168          0.174
-#> 2 age      60 or over      339           -0.545          0.163
-#> 3 node4    no              453           -0.416          0.150
-#> 4 node4    yes             166           -0.314          0.195
-#> 5 sex      female          312           -0.149          0.158
-#> 6 sex      male            307           -0.656          0.183
+#>   variable level      patients events hazard_ratio
+#>   <chr>    <chr>         <int>  <int>        <dbl>
+#> 1 age      under 60        280    137        0.845
+#> 2 age      60 or over      339    154        0.579
+#> 3 node4    no              453    206        0.660
+#> 4 node4    yes             166     85        0.732
+#> 5 sex      female          312    159        0.863
+#> 6 sex      male            307    132        0.520
 ```
 
-The optimized dataset matches the published counts, log hazard ratios, and standard errors in `summary`.
+The optimized dataset matches the published patient counts and hazard ratios in `summary`.
 
 ``` r
 summary
 #> # A tibble: 6 × 5
-#>   variable level      patients log_hazard_ratio standard_error
-#>   <chr>    <chr>         <int>            <dbl>          <dbl>
-#> 1 age      under 60        280           -0.169          0.178
-#> 2 age      60 or over      339           -0.546          0.160
-#> 3 node4    no              453           -0.417          0.153
-#> 4 node4    yes             166           -0.312          0.190
-#> 5 sex      female          312           -0.147          0.162
-#> 6 sex      male            307           -0.656          0.179
+#>   variable level      patients events hazard_ratio
+#>   <chr>    <chr>         <int>  <int>        <dbl>
+#> 1 age      under 60        280    129        0.844
+#> 2 age      60 or over      339    162        0.579
+#> 3 node4    no              453    177        0.659
+#> 4 node4    yes             166    114        0.732
+#> 5 sex      female          312    152        0.863
+#> 6 sex      male            307    139        0.519
 ```
 
-If the published standard errors are supplied, optimization introduces prognostic information, but only indirectly, through the association between standard errors and event counts.
-The statistician running the analyses should investigate this indirect prognostic information before using optimized datasets for covariate adjustment.
+Optimization targets only the hazard ratios.
+The statistician running the analyses should investigate any prognostic information in optimized datasets before using them for covariate adjustment.
 
 See [Optimizing subgroup levels](https://wlandau.github.io/retrogroup/articles/optimization.html) for the method and the [optimization benchmarks](https://wlandau.github.io/retrogroup/articles/benchmarks_optimization.html) for its performance.
 

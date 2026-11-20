@@ -38,24 +38,6 @@ test_that("group_optimize_unconstrained() reduces the loss", {
   }
 })
 
-test_that("group_optimize_unconstrained() reduces the loss without SEs", {
-  data <- probability_example()
-  summary <- data$summary
-  summary$standard_error <- NA_real_
-  set.seed(0)
-  sample <- group_sample_unconstrained(data$patient, summary)
-  x <- suppressWarnings(group_optimize_unconstrained(
-    sample,
-    summary,
-    iterations = 50L
-  ))
-  for (variable in unique(summary$variable)) {
-    before <- optimize_loss_reference(sample, summary, variable)
-    after <- optimize_loss_reference(x, summary, variable)
-    expect_lt(after, before)
-  }
-})
-
 test_that("group_optimize_unconstrained() stops early", {
   data <- probability_example()
   set.seed(0)
@@ -114,14 +96,31 @@ test_that("group_optimize_unconstrained() handles factor levels in patient", {
   expect_identical(x, y)
 })
 
-test_that("optimize_loss_term() uses the SE only if available", {
-  fit <- c(0.5, 0.2)
-  expect_equal(retrogroup:::optimize_loss_term(fit, 0.1, NA_real_), 0.16)
-  expect_equal(retrogroup:::optimize_loss_term(fit, 0.1, 0.3), 0.17)
-  expect_identical(
-    retrogroup:::optimize_loss_term(c(NA_real_, NA_real_), 0.1, 0.3),
-    Inf
-  )
+test_that("optimize_loss_term() is on the hazard ratio scale", {
+  expect_equal(retrogroup:::optimize_loss_term(log(1.5), 1.2), 0.09)
+  expect_equal(retrogroup:::optimize_loss_term(0, 1), 0)
+  expect_identical(retrogroup:::optimize_loss_term(NA_real_, 1.2), Inf)
+})
+
+test_that("optimize_loss_terms() matches the reference loss", {
+  data <- probability_example()
+  summary <- data$summary
+  set.seed(0)
+  sample <- group_sample_unconstrained(data$patient, summary)
+  for (variable in unique(summary$variable)) {
+    rows <- summary$variable == variable
+    terms <- retrogroup:::optimize_loss_terms(
+      x = match(as.character(sample[[variable]]), summary$level[rows]),
+      z = sample$treatment,
+      t = sample$time,
+      d = sample$event,
+      hazard_ratio = summary$hazard_ratio[rows]
+    )
+    expect_equal(
+      sqrt(sum(terms)),
+      optimize_loss_reference(sample, summary, variable)
+    )
+  }
 })
 
 test_that("optimize_unconstrained_variable() never increases the loss", {
@@ -129,14 +128,13 @@ test_that("optimize_unconstrained_variable() never increases the loss", {
   patient <- data$patient
   set.seed(0)
   index <- sample(1:2, nrow(patient), replace = TRUE)
-  beta <- c(-0.5, 0.3)
-  sigma <- c(NA_real_, NA_real_)
+  hazard_ratio <- exp(c(-0.5, 0.3))
   args <- list(z = patient$treatment, t = patient$time, d = patient$event)
   loss <- function(index) {
-    sum(do.call(
+    sqrt(sum(do.call(
       retrogroup:::optimize_loss_terms,
-      c(list(x = index), args, list(beta = beta, sigma = sigma))
-    ))
+      c(list(x = index), args, list(hazard_ratio = hazard_ratio))
+    )))
   }
   before <- loss(index)
   for (iterations in c(1L, 5L, 20L)) {
@@ -145,7 +143,7 @@ test_that("optimize_unconstrained_variable() never increases the loss", {
       c(
         list(x = index),
         args,
-        list(beta = beta, sigma = sigma),
+        list(hazard_ratio = hazard_ratio),
         list(iterations = iterations, tolerance = 0)
       )
     )
@@ -161,7 +159,7 @@ test_that("group_optimize_unconstrained() warns if tolerance is not reached", {
   sample <- group_sample_unconstrained(data$patient, data$summary)
   expect_warning(
     group_optimize_unconstrained(sample, data$summary, iterations = 2L),
-    "did not fall below tolerance = 1e-06 within iterations = 2 for 3",
+    "did not fall below tolerance = 0.001 within iterations = 2 for 3",
     class = "retrogroup_warning"
   )
   warning <- tryCatch(

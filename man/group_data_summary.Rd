@@ -4,14 +4,7 @@
 \alias{group_data_summary}
 \title{Summary subgroup statistics}
 \usage{
-group_data_summary(
-  data,
-  variable,
-  level,
-  patients,
-  log_hazard_ratio,
-  standard_error = NULL
-)
+group_data_summary(data, variable, level, patients, events, hazard_ratio)
 }
 \arguments{
 \item{data}{Data frame with one row per subgroup level. Must have the
@@ -32,17 +25,16 @@ details section for when these counts may differ from the publication.
 The column must contain
 strictly positive whole numbers with no missing values.}
 
-\item{log_hazard_ratio}{Character string, name of the column in \code{data}
-with the published log hazard ratio of treatment versus control in
-each subgroup level. The column must be numeric and finite with no
-missing values.}
+\item{events}{Character string, name of the column in \code{data} with the
+number of events to assign to each level of the reconstructed
+subgroup variable. The column must contain whole numbers with no
+missing values, each at least 1 and at most the number of patients
+in the level.}
 
-\item{standard_error}{Character string or \code{NULL}. If a character string,
-name of the column in \code{data} with the published standard error of the
-log hazard ratio in each subgroup level. The column must be numeric,
-finite, and strictly positive with no missing values. If \code{NULL},
-the standard errors are unavailable, and the \code{standard_error} column
-of the output is \code{NA}.}
+\item{hazard_ratio}{Character string, name of the column in \code{data}
+with the assumed hazard ratio of treatment versus control in each
+subgroup level, on the natural scale (not the log scale). The column
+must be numeric, finite, and strictly positive with no missing values.}
 }
 \value{
 A tibble with one row per subgroup level, in the same order as
@@ -50,19 +42,23 @@ A tibble with one row per subgroup level, in the same order as
 \itemize{
 \item \code{variable}: character, name of the subgroup variable.
 \item \code{level}: character, level of the subgroup variable.
-\item \code{patients}: integer, number of patients in the subgroup level.
-\item \code{log_hazard_ratio}: numeric, published log hazard ratio of treatment
-versus control in the subgroup level.
-\item \code{standard_error}: numeric, published standard error of the log
-hazard ratio, or \code{NA} if \code{standard_error} is \code{NULL}.
+\item \code{patients}: integer, number of patients \eqn{n_k} in the subgroup
+level.
+\item \code{events}: integer, number of events \eqn{e_k} in the subgroup level.
+\item \code{hazard_ratio}: numeric, assumed hazard ratio
+\eqn{\exp(\beta_k)} of treatment versus control in the subgroup
+level.
 }
 }
 \description{
-Convert published subgroup statistics into the
+Convert assumed subgroup statistics into the
 standardized format used by \code{retrogroup}.
 }
 \details{
-Each row of \code{data} is one level of a subgroup variable.
+Each row of \code{data} is one level of a subgroup variable, with
+the number of patients \eqn{n_k}, the number of events \eqn{e_k}, and
+the hazard ratio \eqn{\exp(\beta_k)} of treatment versus control
+defined in \code{vignette("framing", package = "retrogroup")}.
 A subgroup variable must have at least two levels, the levels must be
 unique within the subgroup variable, and every level must have a
 strictly positive number of patients.
@@ -79,23 +75,22 @@ is a decision about the reconstruction, not an attempt to
 recover the true counts from the clinical study. Please disclose that
 decision transparently wherever the reconstructed data or downstream
 results are reported.
+
+Likewise, the event counts must have the same total for every
+subgroup variable, and each level must satisfy
+\eqn{1 \le e_k \le n_k}. See the "Event counts" section of
+\code{vignette("framing", package = "retrogroup")} for how to choose event
+counts, and \code{group_data_events()} for approximating them from
+confidence intervals when the publication does not report them.
 }
 \examples{
-  data <- group_example_summary()
   group_data_summary(
-    data,
+    group_example_summary(),
     variable = "variable",
     level = "level",
     patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio",
-    standard_error = "standard_error"
-  )
-  group_data_summary(
-    data,
-    variable = "variable",
-    level = "level",
-    patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio"
+    events = "events",
+    hazard_ratio = "hazard_ratio"
   )
 }
 \seealso{

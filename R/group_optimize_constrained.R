@@ -9,11 +9,9 @@
 #'   "Optimization for constrained sampling" section of
 #'   `vignette("optimization", package = "retrogroup")`, separately for each
 #'   subgroup variable. The loss \eqn{\Delta(x)} is the same as in
-#'   [group_optimize_unconstrained()]: the squared Euclidean distance
-#'   between the observed and published log hazard ratios, plus the squared
-#'   distance between the observed and published standard errors for the
-#'   subgroup levels whose `standard_error` in `summary` is not `NA`. The
-#'   observed statistics come from a Cox proportional hazards model of each
+#'   [group_optimize_unconstrained()]: the Euclidean distance between the
+#'   observed and assumed hazard ratios. The observed hazard ratios come
+#'   from a Cox proportional hazards model of each
 #'   subgroup level with treatment as the only covariate, as in
 #'   [survival::coxph()]. If the model cannot be fit for some subgroup
 #'   level, for example because one of its arms has no events, the loss is
@@ -72,8 +70,8 @@
 #'     variable = "variable",
 #'     level = "level",
 #'     patients = "patients",
-#'     log_hazard_ratio = "log_hazard_ratio",
-#'     standard_error = "standard_error"
+#'     events = "events",
+#'     hazard_ratio = "hazard_ratio"
 #'   )
 #'   summary <- summary[summary$variable == "age", ]
 #'   set.seed(0)
@@ -81,7 +79,7 @@
 #'   optimized <- group_optimize_constrained(
 #'     sample,
 #'     summary,
-#'     tolerance = 1e-4,
+#'     tolerance = 1e-2,
 #'     iterations = 500L
 #'   )
 #'   summary
@@ -91,7 +89,7 @@ group_optimize_constrained <- function(
   patient,
   summary,
   iterations = 1000L,
-  tolerance = 1e-6
+  tolerance = 1e-3
 ) {
   assert_optimize_arguments(patient, summary, iterations, tolerance)
   assert_optimize_counts(patient, summary)
@@ -107,8 +105,7 @@ group_optimize_constrained <- function(
       z = patient$treatment,
       t = patient$time,
       d = patient$event,
-      beta = summary$log_hazard_ratio[rows],
-      sigma = summary$standard_error[rows],
+      hazard_ratio = summary$hazard_ratio[rows],
       iterations = iterations,
       tolerance = tolerance
     )
@@ -143,10 +140,9 @@ group_optimize_constrained <- function(
 #'     z = patient$treatment,
 #'     t = patient$time,
 #'     d = patient$event,
-#'     beta = sex$log_hazard_ratio,
-#'     sigma = sex$standard_error,
+#'     hazard_ratio = sex$hazard_ratio,
 #'     iterations = 20,
-#'     tolerance = 1e-6
+#'     tolerance = 1e-3
 #'   )
 #'   table(out$x)
 #'   out$loss
@@ -155,20 +151,19 @@ optimize_constrained_variable <- function(
   z,
   t,
   d,
-  beta,
-  sigma,
+  hazard_ratio,
   iterations,
   tolerance
 ) {
-  K <- length(beta)
+  K <- length(hazard_ratio)
   # Loss term of subgroup level k if its patients are the ones in members.
   loss_term <- function(members, k) {
     fit <- analysis_fit(z[members], t[members], d[members])
-    optimize_loss_term(fit, beta[k], sigma[k])
+    optimize_loss_term(fit, hazard_ratio[k])
   }
   # Loss terms of x, one per subgroup level, and the loss Delta(x).
-  terms <- optimize_loss_terms(x, z, t, d, beta, sigma)
-  loss <- sum(terms)
+  terms <- optimize_loss_terms(x, z, t, d, hazard_ratio)
+  loss <- sqrt(sum(terms))
   # Swaps preserve the number of patients n_k in each subgroup level k,
   # so the number of pairs (i, j) with x_i = k and x_j = l is n_k * n_l
   # in every iteration. Each unordered pair of distinct levels k < l is
@@ -206,7 +201,7 @@ optimize_constrained_variable <- function(
     swapped_terms <- terms
     swapped_terms[x_i] <- loss_term(members_i, x_i)
     swapped_terms[x_j] <- loss_term(members_j, x_j)
-    swapped_loss <- sum(swapped_terms)
+    swapped_loss <- sqrt(sum(swapped_terms))
     # Step 3: update x <- x^(i <-> j) if the swap reduces the loss, and
     # otherwise leave x unchanged, so the loss never increases.
     if (swapped_loss < loss) {

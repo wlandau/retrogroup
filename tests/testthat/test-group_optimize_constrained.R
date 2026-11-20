@@ -59,24 +59,6 @@ test_that("group_optimize_constrained() reduces the loss", {
   }
 })
 
-test_that("group_optimize_constrained() reduces the loss without SEs", {
-  data <- probability_example()
-  summary <- data$summary
-  summary$standard_error <- NA_real_
-  set.seed(0)
-  sample <- group_sample_constrained(data$patient, summary)
-  x <- suppressWarnings(group_optimize_constrained(
-    sample,
-    summary,
-    iterations = 200L
-  ))
-  for (variable in unique(summary$variable)) {
-    before <- optimize_loss_reference(sample, summary, variable)
-    after <- optimize_loss_reference(x, summary, variable)
-    expect_lt(after, before)
-  }
-})
-
 test_that("group_optimize_constrained() stops early", {
   data <- probability_example()
   set.seed(0)
@@ -140,14 +122,13 @@ test_that("optimize_constrained_variable() never increases the loss", {
   patient <- data$patient
   set.seed(0)
   index <- sample(rep(1:3, times = c(1L, 2L, 3L)))
-  beta <- c(-0.5, 0.3, 0)
-  sigma <- c(NA_real_, NA_real_, NA_real_)
+  hazard_ratio <- exp(c(-0.5, 0.3, 0))
   args <- list(z = patient$treatment, t = patient$time, d = patient$event)
   loss <- function(index) {
-    sum(do.call(
+    sqrt(sum(do.call(
       retrogroup:::optimize_loss_terms,
-      c(list(x = index), args, list(beta = beta, sigma = sigma))
-    ))
+      c(list(x = index), args, list(hazard_ratio = hazard_ratio))
+    )))
   }
   before <- loss(index)
   for (iterations in c(1L, 5L, 20L)) {
@@ -156,7 +137,7 @@ test_that("optimize_constrained_variable() never increases the loss", {
       c(
         list(x = index),
         args,
-        list(beta = beta, sigma = sigma),
+        list(hazard_ratio = hazard_ratio),
         list(iterations = iterations, tolerance = 0)
       )
     )
@@ -180,8 +161,7 @@ test_that("optimize_constrained_variable() only swaps patients", {
       z = patient$treatment,
       t = patient$time,
       d = patient$event,
-      beta = summary$log_hazard_ratio,
-      sigma = summary$standard_error,
+      hazard_ratio = summary$hazard_ratio,
       iterations = 1L,
       tolerance = 0
     )
@@ -200,8 +180,7 @@ test_that("optimize_constrained_variable() handles a single level", {
     z = patient$treatment,
     t = patient$time,
     d = patient$event,
-    beta = 0,
-    sigma = NA_real_,
+    hazard_ratio = 1,
     iterations = 10L,
     tolerance = 0
   )
@@ -215,7 +194,7 @@ test_that("group_optimize_constrained() warns if tolerance is not reached", {
   sample <- group_sample_constrained(data$patient, data$summary)
   expect_warning(
     group_optimize_constrained(sample, data$summary, iterations = 2L),
-    "did not fall below tolerance = 1e-06 within iterations = 2 for 3",
+    "did not fall below tolerance = 0.001 within iterations = 2 for 3",
     class = "retrogroup_warning"
   )
   warning <- tryCatch(

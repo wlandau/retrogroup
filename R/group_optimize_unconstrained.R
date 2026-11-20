@@ -7,11 +7,10 @@
 #' @details `group_optimize_unconstrained()` implements the
 #'   "Optimization for unconstrained sampling" section of
 #'   `vignette("optimization", package = "retrogroup")`, separately for each
-#'   subgroup variable. The loss \eqn{\Delta(x)} is the squared Euclidean
-#'   distance between the observed and published log hazard ratios, plus
-#'   the squared distance between the observed and published standard
-#'   errors for the subgroup levels whose `standard_error` in `summary`
-#'   is not `NA`. The observed statistics come from a Cox proportional
+#'   subgroup variable. The loss \eqn{\Delta(x)} is the Euclidean
+#'   distance between the observed and assumed hazard ratios of the levels
+#'   of the subgroup variable, as defined in the "Loss function" section of
+#'   that vignette. The observed hazard ratios come from a Cox proportional
 #'   hazards model of each subgroup level with treatment as the only
 #'   covariate, as in [survival::coxph()]. If the model cannot be fit for
 #'   some subgroup level, for example because the level is empty or one of
@@ -54,8 +53,8 @@
 #'   patient and fits one Cox model per subgroup level.
 #' @param tolerance Non-negative number. The search for each subgroup
 #'   variable stops when the loss \eqn{\Delta(x)} falls below `tolerance`.
-#'   The loss is a sum of squares, so the default of `1e-6` stops when the
-#'   observed and published statistics agree to roughly `1e-3`.
+#'   The loss is on the hazard ratio scale, so the default of `1e-3` stops
+#'   when the observed and assumed hazard ratios agree to roughly `1e-3`.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -69,8 +68,8 @@
 #'     variable = "variable",
 #'     level = "level",
 #'     patients = "patients",
-#'     log_hazard_ratio = "log_hazard_ratio",
-#'     standard_error = "standard_error"
+#'     events = "events",
+#'     hazard_ratio = "hazard_ratio"
 #'   )
 #'   summary <- summary[summary$variable == "age", ]
 #'   set.seed(0)
@@ -78,7 +77,7 @@
 #'   optimized <- group_optimize_unconstrained(
 #'     sample,
 #'     summary,
-#'     tolerance = 1e-4,
+#'     tolerance = 1e-2,
 #'     iterations = 100L
 #'   )
 #'   summary
@@ -88,7 +87,7 @@ group_optimize_unconstrained <- function(
   patient,
   summary,
   iterations = 1000L,
-  tolerance = 1e-6
+  tolerance = 1e-3
 ) {
   assert_optimize_arguments(patient, summary, iterations, tolerance)
   out <- tibble::as_tibble(patient)
@@ -103,8 +102,7 @@ group_optimize_unconstrained <- function(
       z = patient$treatment,
       t = patient$time,
       d = patient$event,
-      beta = summary$log_hazard_ratio[rows],
-      sigma = summary$standard_error[rows],
+      hazard_ratio = summary$hazard_ratio[rows],
       iterations = iterations,
       tolerance = tolerance
     )
@@ -126,9 +124,7 @@ group_optimize_unconstrained <- function(
 #' @param z Integer vector, treatment indicator of each patient.
 #' @param t Numeric vector, time of each patient.
 #' @param d Integer vector, event indicator of each patient.
-#' @param beta Numeric vector, published log hazard ratio of each level.
-#' @param sigma Numeric vector, published standard error of each level,
-#'   with `NA` where unavailable.
+#' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
 #' @param iterations Maximum number of iterations.
 #' @param tolerance Loss tolerance.
 #' @examples
@@ -147,10 +143,9 @@ group_optimize_unconstrained <- function(
 #'     z = patient$treatment,
 #'     t = patient$time,
 #'     d = patient$event,
-#'     beta = sex$log_hazard_ratio,
-#'     sigma = sex$standard_error,
+#'     hazard_ratio = sex$hazard_ratio,
 #'     iterations = 20,
-#'     tolerance = 1e-6
+#'     tolerance = 1e-3
 #'   )
 #'   table(out$x)
 #'   out$loss
@@ -159,21 +154,20 @@ optimize_unconstrained_variable <- function(
   z,
   t,
   d,
-  beta,
-  sigma,
+  hazard_ratio,
   iterations,
   tolerance
 ) {
   n <- length(x)
-  K <- length(beta)
+  K <- length(hazard_ratio)
   # Loss term of subgroup level k if its patients are the ones in members.
   loss_term <- function(members, k) {
     fit <- analysis_fit(z[members], t[members], d[members])
-    optimize_loss_term(fit, beta[k], sigma[k])
+    optimize_loss_term(fit, hazard_ratio[k])
   }
   # Loss terms of x, one per subgroup level, and the loss Delta(x).
-  terms <- optimize_loss_terms(x, z, t, d, beta, sigma)
-  loss <- sum(terms)
+  terms <- optimize_loss_terms(x, z, t, d, hazard_ratio)
+  loss <- sqrt(sum(terms))
   iteration <- 0L
   while (iteration < iterations && !(loss < tolerance)) {
     iteration <- iteration + 1L
@@ -205,7 +199,7 @@ optimize_unconstrained_variable <- function(
       },
       numeric(K)
     )
-    counterfactual_loss <- colSums(counterfactual_terms)
+    counterfactual_loss <- sqrt(colSums(counterfactual_terms))
     # Step 3: update x <- x^(i -> k_star), where k_star minimizes the
     # counterfactual loss. The candidates include x^(i -> x_i) = x, so the
     # loss never increases. If the current level x_i ties for the minimum,

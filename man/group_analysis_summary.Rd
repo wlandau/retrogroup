@@ -31,12 +31,8 @@ columns:
 \item \code{patients}: integer, number of patients in the subgroup level.
 \item \code{events}: integer, number of events in the subgroup level.
 \item \code{hazard_ratio}: numeric, estimated hazard ratio of treatment
-versus control in the subgroup level.
-\item \code{log_hazard_ratio}: numeric, estimated log hazard ratio of treatment
-versus control in the subgroup level. Legacy column, to be removed
-in a future version.
-\item \code{standard_error}: numeric, standard error of the log hazard ratio.
-Legacy column, to be removed in a future version.
+versus control in the subgroup level, or \code{NA} if the model cannot
+be fit.
 }
 }
 \description{
@@ -64,8 +60,7 @@ the "Loss function" section of
 
 If the model cannot be fit for some subgroup level, for example
 because one of its arms has no patients or no events, the
-\code{hazard_ratio}, \code{log_hazard_ratio}, and \code{standard_error} of that level
-are \code{NA}.
+\code{hazard_ratio} of that level is \code{NA}.
 
 The levels of a factor subgroup column are its factor levels, in
 order, excluding levels with no patients. The levels of a character
@@ -84,8 +79,8 @@ subgroup column are its sorted unique values.
     variable = "variable",
     level = "level",
     patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio",
-    standard_error = "standard_error"
+    events = "events",
+    hazard_ratio = "hazard_ratio"
   )
   set.seed(0)
   sample <- group_sample_constrained(patient, summary)

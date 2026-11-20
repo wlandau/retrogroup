@@ -8,7 +8,7 @@ group_optimize_unconstrained(
   patient,
   summary,
   iterations = 1000L,
-  tolerance = 1e-06
+  tolerance = 0.001
 )
 }
 \arguments{
@@ -24,8 +24,8 @@ patient and fits one Cox model per subgroup level.}
 
 \item{tolerance}{Non-negative number. The search for each subgroup
 variable stops when the loss \eqn{\Delta(x)} falls below \code{tolerance}.
-The loss is a sum of squares, so the default of \code{1e-6} stops when the
-observed and published statistics agree to roughly \code{1e-3}.}
+The loss is on the hazard ratio scale, so the default of \code{1e-3} stops
+when the observed and assumed hazard ratios agree to roughly \code{1e-3}.}
 }
 \value{
 A tibble with the same rows and columns as \code{patient}, in the
@@ -42,11 +42,10 @@ statistics in \code{summary}. Patient counts are not preserved.
 \code{group_optimize_unconstrained()} implements the
 "Optimization for unconstrained sampling" section of
 \code{vignette("optimization", package = "retrogroup")}, separately for each
-subgroup variable. The loss \eqn{\Delta(x)} is the squared Euclidean
-distance between the observed and published log hazard ratios, plus
-the squared distance between the observed and published standard
-errors for the subgroup levels whose \code{standard_error} in \code{summary}
-is not \code{NA}. The observed statistics come from a Cox proportional
+subgroup variable. The loss \eqn{\Delta(x)} is the Euclidean
+distance between the observed and assumed hazard ratios of the levels
+of the subgroup variable, as defined in the "Loss function" section of
+that vignette. The observed hazard ratios come from a Cox proportional
 hazards model of each subgroup level with treatment as the only
 covariate, as in \code{\link[survival:coxph]{survival::coxph()}}. If the model cannot be fit for
 some subgroup level, for example because the level is empty or one of
@@ -93,8 +92,8 @@ beforehand for reproducible results.
     variable = "variable",
     level = "level",
     patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio",
-    standard_error = "standard_error"
+    events = "events",
+    hazard_ratio = "hazard_ratio"
   )
   summary <- summary[summary$variable == "age", ]
   set.seed(0)
@@ -102,7 +101,7 @@ beforehand for reproducible results.
   optimized <- group_optimize_unconstrained(
     sample,
     summary,
-    tolerance = 1e-4,
+    tolerance = 1e-2,
     iterations = 100L
   )
   summary

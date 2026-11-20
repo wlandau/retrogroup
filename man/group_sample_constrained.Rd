@@ -63,8 +63,8 @@ beforehand for reproducible results.
     variable = "variable",
     level = "level",
     patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio",
-    standard_error = "standard_error"
+    events = "events",
+    hazard_ratio = "hazard_ratio"
   )
   set.seed(0)
   sample <- group_sample_constrained(patient, summary)

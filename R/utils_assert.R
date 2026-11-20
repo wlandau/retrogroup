@@ -48,13 +48,12 @@ assert_string <- function(x, name) {
 #'   in `data`.
 #' @param data Data frame.
 #' @param columns Named list of column name arguments. Names are the
-#'   argument names, values are the column names. `NULL` values are skipped.
+#'   argument names, values are the column names.
 #' @examples
 #'   data <- group_example_patient()
 #'   assert_columns(data, list(arm = "arm", time = "time"))
 #'   try(assert_columns(data, list(arm = "arm", time = "arm")))
 assert_columns <- function(data, columns) {
-  columns <- Filter(Negate(is.null), columns)
   for (name in names(columns)) {
     assert_string(columns[[name]], name)
   }
@@ -80,19 +79,25 @@ assert_columns <- function(data, columns) {
   invisible()
 }
 
-#' @title Disclosure note about adjusted patient counts
+#' @title Disclosure note about adjusted patient or event counts
 #' @noRd
 #' @return Character string, a note reminding the user that the patient
-#'   counts define the reconstructed subgroups, and that choosing counts
-#'   different from the publication is their decision and must be
+#'   or event counts define the reconstructed subgroups, and that choosing
+#'   counts different from the publication is their decision and must be
 #'   disclosed.
+#' @param count Character string, `"patient"` or `"event"`, the kind of
+#'   count the note is about.
 #' @examples
 #'   message_count_adjustment()
-message_count_adjustment <- function() {
+#'   message_count_adjustment("event")
+message_count_adjustment <- function(count = "patient") {
   paste(
-    "The patient counts define the reconstructed subgroups",
+    "The",
+    count,
+    "counts define the reconstructed subgroups",
     "and need not match the publication verbatim.",
-    "Choosing counts that add up to the total number of patients",
+    "Choosing counts that add up to the total number of",
+    paste0(count, "s"),
     "is a decision about the reconstruction,",
     "and it is your responsibility.",
     "Please disclose it transparently wherever the reconstructed",

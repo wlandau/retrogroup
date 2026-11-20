@@ -4,23 +4,13 @@ test_that("group_example_summary() has the expected structure", {
   expect_equal(nrow(x), 6L)
   expect_equal(
     colnames(x),
-    c(
-      "variable",
-      "level",
-      "patients",
-      "events",
-      "hazard_ratio",
-      "log_hazard_ratio",
-      "standard_error"
-    )
+    c("variable", "level", "patients", "events", "hazard_ratio")
   )
   expect_type(x$variable, "character")
   expect_type(x$level, "character")
   expect_type(x$patients, "integer")
   expect_type(x$events, "integer")
   expect_type(x$hazard_ratio, "double")
-  expect_type(x$log_hazard_ratio, "double")
-  expect_type(x$standard_error, "double")
   expect_false(anyNA(x))
 })
 
@@ -40,8 +30,7 @@ test_that("group_example_summary() has the expected contents", {
   }
   expect_true(all(x$patients > 0L))
   expect_true(all(x$events > 0L))
-  expect_equal(x$hazard_ratio, exp(x$log_hazard_ratio))
-  expect_true(all(x$standard_error > 0))
+  expect_true(all(x$hazard_ratio > 0))
 })
 
 test_that("group_example_summary() agrees with direct Cox fits", {
@@ -63,10 +52,5 @@ test_that("group_example_summary() agrees with direct Cox fits", {
     expect_equal(x$patients[row], nrow(subset))
     expect_equal(x$events[row], sum(subset$status))
     expect_equal(x$hazard_ratio[row], exp(unname(stats::coef(fit))))
-    expect_equal(x$log_hazard_ratio[row], unname(stats::coef(fit)))
-    expect_equal(
-      x$standard_error[row],
-      unname(sqrt(diag(stats::vcov(fit))))
-    )
   }
 })

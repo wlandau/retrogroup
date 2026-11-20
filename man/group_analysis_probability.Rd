@@ -40,9 +40,11 @@ subgroup variable. See that section for the formulas, including the
 error when any probability is numerically indistinguishable from zero.
 
 The total number of patients of every subgroup variable in
-\code{summary} must equal the number of rows of \code{patient}. See the details
-of \code{\link[=group_data_summary]{group_data_summary()}} for how to choose the counts. The
-\code{standard_error} column of \code{summary} is not used.
+\code{summary} must equal the number of rows of \code{patient}, and the total
+number of events of every subgroup variable must equal the number of
+events in \code{patient}. See the details of \code{\link[=group_data_summary]{group_data_summary()}} for how
+to choose the counts. The model uses the patient counts and the log of
+the hazard ratios in \code{summary}, not the event counts.
 }
 \examples{
   patient <- group_data_patient(
@@ -57,8 +59,8 @@ of \code{\link[=group_data_summary]{group_data_summary()}} for how to choose the
     variable = "variable",
     level = "level",
     patients = "patients",
-    log_hazard_ratio = "log_hazard_ratio",
-    standard_error = "standard_error"
+    events = "events",
+    hazard_ratio = "hazard_ratio"
   )
   probability <- group_analysis_probability(patient, summary)
   names(probability)

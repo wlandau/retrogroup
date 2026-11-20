@@ -1,40 +1,33 @@
 #' @title Loss term of one subgroup level
 #' @noRd
-#' @return Numeric scalar, the contribution of the level to the loss
-#'   \eqn{\Delta(x)}: \eqn{(\hat\beta_k(x) - \beta_k)^2}, plus
-#'   \eqn{(\hat\sigma_k(x) - \sigma_k)^2} if `sigma` is available.
+#' @return Numeric scalar, the contribution of the level to the squared
+#'   loss \eqn{\Delta(x)^2}:
+#'   \eqn{(\exp(\hat\beta_k(x)) - \exp(\beta_k))^2}.
 #'   `Inf` if the model could not be fit.
-#' @param fit Numeric vector of length 2 from `analysis_fit()`.
-#' @param beta Numeric scalar, published log hazard ratio of the level.
-#' @param sigma Numeric scalar, published standard error of the level,
-#'   or `NA` if unavailable.
+#' @param fit Numeric scalar from `analysis_fit()`, the observed log hazard
+#'   ratio \eqn{\hat\beta_k(x)} of the level, or `NA`.
+#' @param hazard_ratio Numeric scalar, assumed hazard ratio
+#'   \eqn{\exp(\beta_k)} of the level.
 #' @examples
-#'   optimize_loss_term(c(-0.3, 0.15), beta = -0.25, sigma = 0.1)
-#'   optimize_loss_term(c(-0.3, 0.15), beta = -0.25, sigma = NA)
-#'   optimize_loss_term(c(NA, NA), beta = -0.25, sigma = 0.1)
-optimize_loss_term <- function(fit, beta, sigma) {
-  if (anyNA(fit)) {
+#'   optimize_loss_term(-0.3, hazard_ratio = 0.8)
+#'   optimize_loss_term(NA_real_, hazard_ratio = 0.8)
+optimize_loss_term <- function(fit, hazard_ratio) {
+  if (is.na(fit)) {
     return(Inf)
   }
-  out <- (fit[1L] - beta)^2
-  if (!is.na(sigma)) {
-    out <- out + (fit[2L] - sigma)^2
-  }
-  out
+  (exp(fit) - hazard_ratio)^2
 }
 
 #' @title Loss terms of all levels of one subgroup variable
 #' @noRd
 #' @return Numeric vector with one loss term per level. The loss
-#'   \eqn{\Delta(x)} is the sum.
+#'   \eqn{\Delta(x)} is the square root of the sum.
 #' @param x Integer vector with one element per patient: the index of
 #'   the current subgroup level \eqn{x_i} of each patient.
 #' @param z Integer vector, treatment indicator of each patient.
 #' @param t Numeric vector, time of each patient.
 #' @param d Integer vector, event indicator of each patient.
-#' @param beta Numeric vector, published log hazard ratio of each level.
-#' @param sigma Numeric vector, published standard error of each level,
-#'   with `NA` where unavailable.
+#' @param hazard_ratio Numeric vector, assumed hazard ratio of each level.
 #' @examples
 #'   patient <- group_data_patient(
 #'     group_example_patient(),
@@ -51,16 +44,15 @@ optimize_loss_term <- function(fit, beta, sigma) {
 #'     z = patient$treatment,
 #'     t = patient$time,
 #'     d = patient$event,
-#'     beta = sex$log_hazard_ratio,
-#'     sigma = sex$standard_error
+#'     hazard_ratio = sex$hazard_ratio
 #'   )
-optimize_loss_terms <- function(x, z, t, d, beta, sigma) {
+optimize_loss_terms <- function(x, z, t, d, hazard_ratio) {
   vapply(
-    seq_along(beta),
+    seq_along(hazard_ratio),
     \(k) {
       members <- x == k
       fit <- analysis_fit(z[members], t[members], d[members])
-      optimize_loss_term(fit, beta[k], sigma[k])
+      optimize_loss_term(fit, hazard_ratio[k])
     },
     numeric(1L)
   )
@@ -85,8 +77,8 @@ optimize_loss_terms <- function(x, z, t, d, beta, sigma) {
 #'   )
 #'   summary <- group_example_summary()
 #'   sampled <- group_sample_unconstrained(patient, summary)
-#'   assert_optimize_arguments(sampled, summary, iterations = 10, tolerance = 1e-6)
-#'   try(assert_optimize_arguments(sampled, summary, iterations = -1, tolerance = 1e-6))
+#'   assert_optimize_arguments(sampled, summary, iterations = 10, tolerance = 1e-3)
+#'   try(assert_optimize_arguments(sampled, summary, iterations = -1, tolerance = 1e-3))
 assert_optimize_arguments <- function(
   patient,
   summary,
@@ -162,7 +154,7 @@ assert_optimize_arguments <- function(
 #'   warn_optimize_tolerance(
 #'     loss = c(age = 1e-8, sex = 0.02),
 #'     iterations = 100,
-#'     tolerance = 1e-6
+#'     tolerance = 1e-3
 #'   )
 warn_optimize_tolerance <- function(loss, iterations, tolerance) {
   unconverged <- loss[!(loss < tolerance)]

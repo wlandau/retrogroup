@@ -23,8 +23,7 @@
 #'
 #'   If the model cannot be fit for some subgroup level, for example
 #'   because one of its arms has no patients or no events, the
-#'   `hazard_ratio`, `log_hazard_ratio`, and `standard_error` of that level
-#'   are `NA`.
+#'   `hazard_ratio` of that level is `NA`.
 #'
 #'   The levels of a factor subgroup column are its factor levels, in
 #'   order, excluding levels with no patients. The levels of a character
@@ -37,12 +36,8 @@
 #'   * `patients`: integer, number of patients in the subgroup level.
 #'   * `events`: integer, number of events in the subgroup level.
 #'   * `hazard_ratio`: numeric, estimated hazard ratio of treatment
-#'     versus control in the subgroup level.
-#'   * `log_hazard_ratio`: numeric, estimated log hazard ratio of treatment
-#'     versus control in the subgroup level. Legacy column, to be removed
-#'     in a future version.
-#'   * `standard_error`: numeric, standard error of the log hazard ratio.
-#'     Legacy column, to be removed in a future version.
+#'     versus control in the subgroup level, or `NA` if the model cannot
+#'     be fit.
 #' @param patient Patient-level survival data with subgroup columns,
 #'   usually the output of [group_sample_unconstrained()],
 #'   [group_sample_constrained()], [group_optimize_unconstrained()], or
@@ -65,8 +60,8 @@
 #'     variable = "variable",
 #'     level = "level",
 #'     patients = "patients",
-#'     log_hazard_ratio = "log_hazard_ratio",
-#'     standard_error = "standard_error"
+#'     events = "events",
+#'     hazard_ratio = "hazard_ratio"
 #'   )
 #'   set.seed(0)
 #'   sample <- group_sample_constrained(patient, summary)
@@ -100,16 +95,14 @@ group_analysis_summary <- function(
           )
         )
       },
-      numeric(4L)
+      numeric(3L)
     )
     tibble::tibble(
       variable = variable,
       level = levels,
       patients = as.integer(fits[1L, ]),
       events = as.integer(fits[2L, ]),
-      hazard_ratio = exp(unname(fits[3L, ])),
-      log_hazard_ratio = unname(fits[3L, ]),
-      standard_error = unname(fits[4L, ])
+      hazard_ratio = exp(unname(fits[3L, ]))
     )
   })
   do.call(rbind, rows)
@@ -120,10 +113,9 @@ group_analysis_summary <- function(
 #' @description Fit a Cox proportional hazards model by partial likelihood
 #'   with treatment as the only covariate and the Efron method for ties,
 #'   as in [survival::coxph()].
-#' @return Numeric vector of length 2: the estimated log hazard ratio
-#'   and its standard error. Both elements are `NA` if the model cannot be
-#'   fit, for example because the level is empty or one of its arms has
-#'   no events.
+#' @return Numeric scalar, the estimated log hazard ratio
+#'   \eqn{\hat\beta_k(x)}, or `NA` if the model cannot be fit, for example
+#'   because the level is empty or one of its arms has no events.
 #' @param z Integer vector, treatment indicator of each patient in the
 #'   subgroup level.
 #' @param t Numeric vector, time of each patient in the subgroup level.
@@ -141,7 +133,7 @@ group_analysis_summary <- function(
 #'   analysis_fit(z = c(0L, 1L), t = c(1, 2), d = c(0L, 0L))
 analysis_fit <- function(z, t, d) {
   if (!any(d[z == 1L] == 1L) || !any(d[z == 0L] == 1L)) {
-    return(c(NA_real_, NA_real_))
+    return(NA_real_)
   }
   fit <- tryCatch(
     suppressWarnings(
@@ -161,11 +153,11 @@ analysis_fit <- function(z, t, d) {
     error = \(error) NULL
   )
   if (is.null(fit)) {
-    return(c(NA_real_, NA_real_))
+    return(NA_real_)
   }
-  out <- c(unname(fit$coefficients[1L]), sqrt(fit$var[1L, 1L]))
-  if (!all(is.finite(out))) {
-    return(c(NA_real_, NA_real_))
+  out <- unname(fit$coefficients[1L])
+  if (!is.finite(out) || !is.finite(fit$var[1L, 1L])) {
+    return(NA_real_)
   }
   out
 }
