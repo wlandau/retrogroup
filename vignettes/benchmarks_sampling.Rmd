@@ -39,7 +39,7 @@ simulated_reps <- 200L       # Full scale: 200 sampled datasets per simulated da
 
 </details>
 
-Rendered on 2026-11-20 with `retrogroup` 0.0.3 at commit [81c7690](https://github.com/wlandau/retrogroup/commit/81c769003240f22dc1896a164812f4c6064b4b76).
+Rendered on 2026-11-20 with `retrogroup` 0.0.3 at commit [ae41314](https://github.com/wlandau/retrogroup/commit/ae41314f5b1230c8e03380bbb4a31a48e2e4b656).
 
 ## Purpose
 
@@ -65,8 +65,15 @@ We run two versions of this experiment:
 `group_sample_constrained()` promises that the number of patients in each subgroup level of every sampled dataset exactly matches the assumed counts in the summary.
 The benchmark checks this promise for every constrained sampled dataset, and it stops with an error if any count differs, so this vignette only renders if every constrained sampled dataset matches.
 
-Each experiment reports a table of targets, means over the sampled datasets, and their differences (mean minus target).
-Each figure shows the difference between a sampled dataset's estimate and its target: points are means, and bars span the central 95% of sampled datasets.
+Each experiment reports a table of targets, means over the sampled datasets, their differences (mean minus target), and a 95% confidence interval of the mean difference.
+The first figure of each experiment shows the spread of sampled datasets: points are mean differences, and bars span the central 95% of the differences between a sampled dataset's estimate and its target.
+The second figure shows the precision of the mean: points are mean differences, and bars are 95% confidence intervals of the mean difference.
+If a confidence interval excludes zero, the mean differs from its target by more than Monte Carlo error can explain, so the sampler is biased for that subgroup level.
+
+In the colon cancer example, the sampled datasets are independent draws from the same patient-level data, so the confidence interval is $\bar{d} \pm t_{0.975, R - 1} s / \sqrt{R}$, where $\bar{d}$ and $s$ are the mean and standard deviation of the $R$ differences.
+In the simulated example, sampled datasets from the same simulated dataset share its patients, so they are correlated.
+The simulated datasets are independent, so the confidence interval uses the same formula on the $D$ per-dataset mean differences instead, with $D - 1$ degrees of freedom.
+The intervals are not adjusted for multiple comparisons across subgroup levels and samplers.
 
 <details><summary>Show code</summary>
 
@@ -130,12 +137,17 @@ sample_estimates <- function(sampler, data, reps, constrained) {
 # Returns one row per sampler, subgroup level, and quantity.
 benchmark <- function(datasets, reps) {
   estimates <- lapply(names(samplers), \(name) {
-    estimates <- lapply(
-      datasets,
-      \(data) {
-        sample_estimates(samplers[[name]], data, reps, constrained[[name]])
-      }
-    )
+    estimates <- lapply(seq_along(datasets), \(dataset) {
+      cbind(
+        dataset = dataset,
+        sample_estimates(
+          samplers[[name]],
+          datasets[[dataset]],
+          reps,
+          constrained[[name]]
+        )
+      )
+    })
     cbind(
       sampler = factor(name, levels = names(samplers)),
       do.call(rbind, estimates)
@@ -156,7 +168,30 @@ benchmark <- function(datasets, reps) {
   )
   out$lower <- interval$difference[, 1L]
   out$upper <- interval$difference[, 2L]
+  mean_intervals <- vapply(seq_len(nrow(out)), \(row) {
+    rows <- estimates$subgroup == out$subgroup[row] &
+      estimates$quantity == out$quantity[row] &
+      estimates$sampler == out$sampler[row]
+    mean_interval(estimates$difference[rows], estimates$dataset[rows])
+  }, numeric(2L))
+  out$mean_lower <- mean_intervals[1L, ]
+  out$mean_upper <- mean_intervals[2L, ]
   out
+}
+
+# 95% t confidence interval of the mean difference.
+# With one dataset, the sampled datasets are independent draws.
+# With several datasets, sampled datasets from the same dataset are
+# correlated, so the interval uses the independent per-dataset means.
+mean_interval <- function(difference, dataset) {
+  units <- if (length(unique(dataset)) > 1L) {
+    tapply(difference, dataset, mean)
+  } else {
+    difference
+  }
+  n <- length(units)
+  half_width <- stats::qt(0.975, df = n - 1L) * stats::sd(units) / sqrt(n)
+  mean(units) + c(-half_width, half_width)
 }
 
 simulate_dataset <- function(n) {
@@ -212,9 +247,13 @@ show_table <- function(x) {
       `Target HR` = format_number(hr$target),
       `Mean HR` = format_number(hr$estimate),
       `HR difference` = format_number(hr$difference),
+      `95% CI of HR difference` = paste0(
+        "(", format_number(hr$mean_lower), ", ",
+        format_number(hr$mean_upper), ")"
+      ),
       check.names = FALSE
     ),
-    align = c("l", "l", rep("r", 3L)),
+    align = c("l", "l", rep("r", 4L)),
     row.names = FALSE
   )
 }
@@ -231,6 +270,44 @@ show_plot <- function(x) {
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.spacing = grid::unit(1, "lines")
+    )
+}
+
+# Highlight subgroup levels whose confidence interval of the mean excludes 0.
+show_mean_plot <- function(x) {
+  x$status <- factor(
+    ifelse(
+      x$mean_lower > 0 | x$mean_upper < 0,
+      "Excludes zero",
+      "Includes zero"
+    ),
+    levels = c("Includes zero", "Excludes zero")
+  )
+  ggplot(
+    x,
+    aes(
+      x = difference,
+      xmin = mean_lower,
+      xmax = mean_upper,
+      y = subgroup,
+      color = status
+    )
+  ) +
+    geom_vline(xintercept = 0, color = "#8c8b86") +
+    geom_pointrange(size = 0.4, show.legend = TRUE) +
+    facet_grid(sampler ~ quantity, scales = "free_x") +
+    scale_y_discrete(limits = rev) +
+    scale_color_manual(
+      values = c("Includes zero" = "#2a78d6", "Excludes zero" = "#d03b3b"),
+      drop = FALSE
+    ) +
+    labs(x = "Mean of estimate minus target", y = NULL, color = "95% CI") +
+    theme_minimal(base_size = 11) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.spacing = grid::unit(1, "lines"),
+      legend.position = "bottom"
     )
 }
 ```
@@ -269,26 +346,31 @@ colon_results <- benchmark(list(colon), reps = colon_reps)
 
 
 
-|Sampler       |Subgroup        | Target HR| Mean HR| HR difference|
-|:-------------|:---------------|---------:|-------:|-------------:|
-|Unconstrained |age: under 60   |     0.844|   0.851|         0.007|
-|Unconstrained |age: 60 or over |     0.579|   0.575|        -0.004|
-|Unconstrained |node4: no       |     0.659|   0.671|         0.012|
-|Unconstrained |node4: yes      |     0.732|   0.759|         0.027|
-|Unconstrained |sex: female     |     0.863|   0.881|         0.018|
-|Unconstrained |sex: male       |     0.519|   0.523|         0.005|
-|Constrained   |age: under 60   |     0.844|   0.849|         0.004|
-|Constrained   |age: 60 or over |     0.579|   0.577|        -0.002|
-|Constrained   |node4: no       |     0.659|   0.672|         0.013|
-|Constrained   |node4: yes      |     0.732|   0.751|         0.019|
-|Constrained   |sex: female     |     0.863|   0.874|         0.011|
-|Constrained   |sex: male       |     0.519|   0.529|         0.010|
+|Sampler       |Subgroup        | Target HR| Mean HR| HR difference| 95% CI of HR difference|
+|:-------------|:---------------|---------:|-------:|-------------:|-----------------------:|
+|Unconstrained |age: under 60   |     0.844|   0.851|         0.007|          (0.002, 0.012)|
+|Unconstrained |age: 60 or over |     0.579|   0.575|        -0.004|        (-0.007, -0.001)|
+|Unconstrained |node4: no       |     0.659|   0.671|         0.012|          (0.010, 0.014)|
+|Unconstrained |node4: yes      |     0.732|   0.757|         0.025|          (0.018, 0.032)|
+|Unconstrained |sex: female     |     0.863|   0.883|         0.020|          (0.016, 0.024)|
+|Unconstrained |sex: male       |     0.519|   0.523|         0.004|          (0.001, 0.007)|
+|Constrained   |age: under 60   |     0.844|   0.843|        -0.002|         (-0.006, 0.003)|
+|Constrained   |age: 60 or over |     0.579|   0.581|         0.002|         (-0.001, 0.005)|
+|Constrained   |node4: no       |     0.659|   0.670|         0.011|          (0.009, 0.013)|
+|Constrained   |node4: yes      |     0.732|   0.757|         0.025|          (0.019, 0.031)|
+|Constrained   |sex: female     |     0.863|   0.876|         0.013|          (0.009, 0.017)|
+|Constrained   |sex: male       |     0.519|   0.529|         0.010|          (0.007, 0.013)|
 
 
 
 <div class="figure">
 <img src="benchmarks_sampling_figures/colon-plot-1.png" alt="Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per colon subgroup level, plotted as estimate minus target with a vertical reference line at zero."  />
 <p class="caption">Colon cancer example: estimate minus target of the hazard ratio for each subgroup level and sampler. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average.</p>
+</div>
+
+<div class="figure">
+<img src="benchmarks_sampling_figures/colon-mean-plot-1.png" alt="Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal 95% confidence interval of the mean per colon subgroup level, plotted as mean estimate minus target with a vertical reference line at zero. Intervals that exclude zero are red, and the rest are blue."  />
+<p class="caption">Colon cancer example: mean estimate minus target of the hazard ratio for each subgroup level and sampler. Points are means over the sampled datasets, and bars are 95% confidence intervals of the mean. A red interval excludes zero, which means the sampler is biased for that subgroup level beyond Monte Carlo error.</p>
 </div>
 
 ## Simulated example
@@ -309,18 +391,23 @@ simulated_results <- benchmark(simulated, reps = simulated_reps)
 
 
 
-|Sampler       |Subgroup      | Target HR| Mean HR| HR difference|
-|:-------------|:-------------|---------:|-------:|-------------:|
-|Unconstrained |group: low    |     0.448|   0.448|      3.16e-04|
-|Unconstrained |group: middle |     0.998|   1.000|         0.002|
-|Unconstrained |group: high   |     1.646|   1.649|         0.003|
-|Constrained   |group: low    |     0.448|   0.451|         0.004|
-|Constrained   |group: middle |     0.998|   0.999|         0.001|
-|Constrained   |group: high   |     1.646|   1.642|        -0.004|
+|Sampler       |Subgroup      | Target HR| Mean HR| HR difference| 95% CI of HR difference|
+|:-------------|:-------------|---------:|-------:|-------------:|-----------------------:|
+|Unconstrained |group: low    |     0.448|   0.448|     -3.09e-04|         (-0.002, 0.002)|
+|Unconstrained |group: middle |     1.003|   1.003|     -2.20e-04|         (-0.003, 0.002)|
+|Unconstrained |group: high   |     1.658|   1.658|     -6.81e-05|         (-0.004, 0.004)|
+|Constrained   |group: low    |     0.448|   0.451|         0.003|          (0.001, 0.005)|
+|Constrained   |group: middle |     1.003|   1.002|        -0.001|         (-0.003, 0.001)|
+|Constrained   |group: high   |     1.658|   1.652|        -0.006|        (-0.010, -0.002)|
 
 
 
 <div class="figure">
 <img src="benchmarks_sampling_figures/simulated-plot-1.png" alt="Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero."  />
 <p class="caption">Simulated example: estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average.</p>
+</div>
+
+<div class="figure">
+<img src="benchmarks_sampling_figures/simulated-mean-plot-1.png" alt="Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal 95% confidence interval of the mean per level of the simulated subgroup variable, plotted as mean estimate minus target with a vertical reference line at zero. Intervals that exclude zero are red, and the rest are blue."  />
+<p class="caption">Simulated example: mean estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars are 95% confidence intervals of the mean computed from the per-dataset means. A red interval excludes zero, which means the sampler is biased for that subgroup level beyond Monte Carlo error.</p>
 </div>

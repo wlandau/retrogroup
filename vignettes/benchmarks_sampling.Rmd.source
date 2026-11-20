@@ -87,8 +87,15 @@ We run two versions of this experiment:
 `group_sample_constrained()` promises that the number of patients in each subgroup level of every sampled dataset exactly matches the assumed counts in the summary.
 The benchmark checks this promise for every constrained sampled dataset, and it stops with an error if any count differs, so this vignette only renders if every constrained sampled dataset matches.
 
-Each experiment reports a table of targets, means over the sampled datasets, and their differences (mean minus target).
-Each figure shows the difference between a sampled dataset's estimate and its target: points are means, and bars span the central 95% of sampled datasets.
+Each experiment reports a table of targets, means over the sampled datasets, their differences (mean minus target), and a 95% confidence interval of the mean difference.
+The first figure of each experiment shows the spread of sampled datasets: points are mean differences, and bars span the central 95% of the differences between a sampled dataset's estimate and its target.
+The second figure shows the precision of the mean: points are mean differences, and bars are 95% confidence intervals of the mean difference.
+If a confidence interval excludes zero, the mean differs from its target by more than Monte Carlo error can explain, so the sampler is biased for that subgroup level.
+
+In the colon cancer example, the sampled datasets are independent draws from the same patient-level data, so the confidence interval is $\bar{d} \pm t_{0.975, R - 1} s / \sqrt{R}$, where $\bar{d}$ and $s$ are the mean and standard deviation of the $R$ differences.
+In the simulated example, sampled datasets from the same simulated dataset share its patients, so they are correlated.
+The simulated datasets are independent, so the confidence interval uses the same formula on the $D$ per-dataset mean differences instead, with $D - 1$ degrees of freedom.
+The intervals are not adjusted for multiple comparisons across subgroup levels and samplers.
 
 ```{r helpers, fold = TRUE}
 samplers <- list(
@@ -150,12 +157,17 @@ sample_estimates <- function(sampler, data, reps, constrained) {
 # Returns one row per sampler, subgroup level, and quantity.
 benchmark <- function(datasets, reps) {
   estimates <- lapply(names(samplers), \(name) {
-    estimates <- lapply(
-      datasets,
-      \(data) {
-        sample_estimates(samplers[[name]], data, reps, constrained[[name]])
-      }
-    )
+    estimates <- lapply(seq_along(datasets), \(dataset) {
+      cbind(
+        dataset = dataset,
+        sample_estimates(
+          samplers[[name]],
+          datasets[[dataset]],
+          reps,
+          constrained[[name]]
+        )
+      )
+    })
     cbind(
       sampler = factor(name, levels = names(samplers)),
       do.call(rbind, estimates)
@@ -176,7 +188,30 @@ benchmark <- function(datasets, reps) {
   )
   out$lower <- interval$difference[, 1L]
   out$upper <- interval$difference[, 2L]
+  mean_intervals <- vapply(seq_len(nrow(out)), \(row) {
+    rows <- estimates$subgroup == out$subgroup[row] &
+      estimates$quantity == out$quantity[row] &
+      estimates$sampler == out$sampler[row]
+    mean_interval(estimates$difference[rows], estimates$dataset[rows])
+  }, numeric(2L))
+  out$mean_lower <- mean_intervals[1L, ]
+  out$mean_upper <- mean_intervals[2L, ]
   out
+}
+
+# 95% t confidence interval of the mean difference.
+# With one dataset, the sampled datasets are independent draws.
+# With several datasets, sampled datasets from the same dataset are
+# correlated, so the interval uses the independent per-dataset means.
+mean_interval <- function(difference, dataset) {
+  units <- if (length(unique(dataset)) > 1L) {
+    tapply(difference, dataset, mean)
+  } else {
+    difference
+  }
+  n <- length(units)
+  half_width <- stats::qt(0.975, df = n - 1L) * stats::sd(units) / sqrt(n)
+  mean(units) + c(-half_width, half_width)
 }
 
 simulate_dataset <- function(n) {
@@ -232,9 +267,13 @@ show_table <- function(x) {
       `Target HR` = format_number(hr$target),
       `Mean HR` = format_number(hr$estimate),
       `HR difference` = format_number(hr$difference),
+      `95% CI of HR difference` = paste0(
+        "(", format_number(hr$mean_lower), ", ",
+        format_number(hr$mean_upper), ")"
+      ),
       check.names = FALSE
     ),
-    align = c("l", "l", rep("r", 3L)),
+    align = c("l", "l", rep("r", 4L)),
     row.names = FALSE
   )
 }
@@ -251,6 +290,44 @@ show_plot <- function(x) {
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.spacing = grid::unit(1, "lines")
+    )
+}
+
+# Highlight subgroup levels whose confidence interval of the mean excludes 0.
+show_mean_plot <- function(x) {
+  x$status <- factor(
+    ifelse(
+      x$mean_lower > 0 | x$mean_upper < 0,
+      "Excludes zero",
+      "Includes zero"
+    ),
+    levels = c("Includes zero", "Excludes zero")
+  )
+  ggplot(
+    x,
+    aes(
+      x = difference,
+      xmin = mean_lower,
+      xmax = mean_upper,
+      y = subgroup,
+      color = status
+    )
+  ) +
+    geom_vline(xintercept = 0, color = "#8c8b86") +
+    geom_pointrange(size = 0.4, show.legend = TRUE) +
+    facet_grid(sampler ~ quantity, scales = "free_x") +
+    scale_y_discrete(limits = rev) +
+    scale_color_manual(
+      values = c("Includes zero" = "#2a78d6", "Excludes zero" = "#d03b3b"),
+      drop = FALSE
+    ) +
+    labs(x = "Mean of estimate minus target", y = NULL, color = "95% CI") +
+    theme_minimal(base_size = 11) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.spacing = grid::unit(1, "lines"),
+      legend.position = "bottom"
     )
 }
 ```
@@ -290,6 +367,10 @@ show_table(colon_results)
 show_plot(colon_results)
 ```
 
+```{r colon-mean-plot, echo = FALSE, fig.height = 5, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal 95% confidence interval of the mean per colon subgroup level, plotted as mean estimate minus target with a vertical reference line at zero. Intervals that exclude zero are red, and the rest are blue.", fig.cap = "Colon cancer example: mean estimate minus target of the hazard ratio for each subgroup level and sampler. Points are means over the sampled datasets, and bars are 95% confidence intervals of the mean. A red interval excludes zero, which means the sampler is biased for that subgroup level beyond Monte Carlo error."}
+show_mean_plot(colon_results)
+```
+
 ## Simulated example
 
 We simulate `r simulated_datasets` datasets and draw `r simulated_reps` sampled datasets from each with each sampler.
@@ -311,4 +392,8 @@ show_table(simulated_results)
 
 ```{r simulated-plot, echo = FALSE, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal interval per level of the simulated subgroup variable, plotted as estimate minus target with a vertical reference line at zero.", fig.cap = "Simulated example: estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars span quantile intervals of the sampled datasets. A point on the vertical line at zero means the sampled datasets reproduce the target on average."}
 show_plot(simulated_results)
+```
+
+```{r simulated-mean-plot, echo = FALSE, fig.alt = "Column of dot-and-interval panels for the hazard ratio. Rows are the samplers, and each panel has one horizontal 95% confidence interval of the mean per level of the simulated subgroup variable, plotted as mean estimate minus target with a vertical reference line at zero. Intervals that exclude zero are red, and the rest are blue.", fig.cap = "Simulated example: mean estimate minus target of the hazard ratio for each subgroup level and sampler, pooled over all simulated datasets. Points are means over the sampled datasets, and bars are 95% confidence intervals of the mean computed from the per-dataset means. A red interval excludes zero, which means the sampler is biased for that subgroup level beyond Monte Carlo error."}
+show_mean_plot(simulated_results)
 ```
