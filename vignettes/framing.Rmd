@@ -111,7 +111,7 @@ For a given subgroup variable with $K$ levels, define:
 * $k = 1, \ldots, K$ indexes the levels of the subgroup variable.
 * $n_k$: number of patients in subgroup level $k$.
 * $e_k$: number of events in subgroup level $k$.
-* $\exp(\beta_k)$: published hazard ratio of treatment versus control in subgroup level $k$, so that $\beta_k$ is the log hazard ratio.
+* $\exp(\beta_k)$: assumed hazard ratio of treatment versus control in subgroup level $k$, so that $\beta_k$ is the log hazard ratio.
 
 ```{r, echo = FALSE}
 age <- summary[summary$variable == "age", ]
@@ -137,9 +137,11 @@ We assume $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$: the sum of the subgroup eve
 Each $e_k$ must not exceed $n_k$.
 
 Published event counts are the natural starting point, but they may not add up to the total number of events in the patient-level data, and they may not suit values of $n_k$ that differ from the published patient counts.
-In that case, a reasonable approach is to preserve the published event fraction of each level: multiply it by the chosen $n_k$, then rescale across levels and round so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
+In that case, one of many possible approaches is to preserve the published event fraction of each level: multiply it by the chosen $n_k$, then rescale across levels and round so that $\sum_{i = 1}^n d_i = \sum_{k = 1}^K e_k$.
 
-If the publication does not report event counts at all, you can approximate them using `group_event_counts()`.
+If the publication does not report event counts at all, you can approximate them using `group_data_events()`.
 See `vignette("events", package = "retrogroup")` for details.
+
+In all cases, the choice is up to the judgment of the statistician, and any downstream subgroup analyses should explicitly state the subgroup event counts used and how they were chosen.
 
 ## References

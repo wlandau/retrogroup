@@ -1,9 +1,9 @@
 ---
-title: "Approximating event counts using confidence intervals of published hazard ratios"
+title: "Approximating event counts using confidence intervals of assumed hazard ratios"
 output: rmarkdown::html_vignette
 bibliography: ../inst/bibliography.bib
 vignette: >
-  %\VignetteIndexEntry{Approximating event counts using confidence intervals of published hazard ratios}
+  %\VignetteIndexEntry{Approximating event counts using confidence intervals of assumed hazard ratios}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,7 +21,8 @@ library(retrogroup)
 
 The methods in this package assume the subgroup-level event counts $e_1, \ldots, e_K$ are available.
 However, these counts are not always published in the literature.
-This appendix vignette defines a method for approximating them using published subgroup-level hazard ratios, implemented in the `group_data_events()` function.
+This appendix vignette defines a method for approximating them using assumed subgroup-level hazard ratios, implemented in the `group_data_events()` function.
+Notation follows `vignette("framing", package = "retrogroup")`.
 
 The method takes the following as input:
 
@@ -30,6 +31,7 @@ The method takes the following as input:
 3. The confidence level $1 - \alpha$ of the two-sided confidence interval.
 4. The treatment assignments $z_i$ for each patient $i = 1, \ldots, n$.
 5. The event indicator $d_i$ for each patient $i = 1, \ldots, n$.
+6. The subgroup sample sizes $n_1, \ldots, n_K$.
 
 We can log-transform $b_k$ to obtain an analogous confidence bound for the log hazard ratio $\beta_k$:
 
@@ -57,6 +59,8 @@ $$
 \rho := \frac{1}{n}\sum_{i = 1}^n z_i
 $$
 
+The treatment allocation within each subgroup level is generally not available, so we use the overall proportion $\rho$ for every level $k$, an assumption that randomization supports.
+
 Plugging in the two expressions for $\sigma_k^2$ and solving for $e_k$, we find:
 
 $$
@@ -66,6 +70,9 @@ e_k &\approx \frac{1}{\rho (1 - \rho)} \frac{\Phi^{-1}(1 - \alpha / 2)^2}{\left 
 \end{aligned}
 $$
 
-These approximate event counts do not necessarily sum to the total number of events in the patient-level data, so `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$.
+These approximate event counts do not necessarily sum to the total number of events in the patient-level data, and they may exceed the subgroup sample sizes.
+So `retrogroup` rounds the approximate counts and either increments or decrements them uniformly and deterministically so that $\sum_{k = 1}^K e_k = \sum_{i = 1}^n d_i$ and $e_k \le n_k$ for each level $k$.
+This is only one of many possible ways to reconcile the counts.
+The final choice is up to the judgment of the statistician, and any downstream subgroup analyses should explicitly state the subgroup event counts used and how they were chosen.
 
 ## References
